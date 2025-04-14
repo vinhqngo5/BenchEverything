@@ -184,17 +184,71 @@ def create_benchmark_table(benchmark_results):
     if not benchmark_results:
         return "[No benchmark results available]"
     
-    table = "| Benchmark | Time (ns) | CPU (ns) | Iterations |\n"
-    table += "|-----------|----------|---------|------------|\n"
+    # Get all metrics from the first benchmark to determine table columns
+    columns = {}
+    if benchmark_results.get('benchmarks') and len(benchmark_results['benchmarks']) > 0:
+        first_benchmark = benchmark_results['benchmarks'][0]
+        # Filter out non-numeric values or complex structures and map to user-friendly names
+        column_mapping = {
+            "name": "Benchmark",
+            "real_time": "Time (ns)",
+            "cpu_time": "CPU (ns)",
+            "iterations": "Iterations",
+            "threads": "Threads",
+            "time_unit": "Time Unit",
+            "repetitions": "Repetitions",
+            "time_cv": "Time CV (%)",
+            "cpu_cv": "CPU CV (%)",
+            "items_per_second": "Items/Second",
+            "bytes_per_second": "Bytes/Second"
+            # Add any other metrics you want to display with user-friendly names
+        }
+        
+        # Add core columns first in a specific order
+        core_columns = ["name", "real_time", "cpu_time", "iterations"]
+        for key in core_columns:
+            if key in first_benchmark:
+                columns[key] = column_mapping.get(key, key)
+        
+        # Then add any other numeric columns
+        for key, value in first_benchmark.items():
+            if key not in core_columns and (isinstance(value, (int, float, bool)) or 
+                                           (isinstance(value, str) and value.replace('.', '', 1).isdigit())):
+                if key in column_mapping:
+                    columns[key] = column_mapping.get(key, key)
+    
+    # If no valid columns found, use defaults
+    if not columns:
+        columns = {
+            "name": "Benchmark",
+            "real_time": "Time (ns)",
+            "cpu_time": "CPU (ns)",
+            "iterations": "Iterations"
+        }
+    
+    # Create table header based on found columns
+    header_row = "| "
+    separator_row = "| "
+    
+    for col_key, col_name in columns.items():
+        header_row += f"{col_name} | "
+        separator_row += "-" * len(col_name) + " | "
+    
+    table = header_row + "\n" + separator_row + "\n"
     
     try:
         for benchmark in benchmark_results.get('benchmarks', []):
-            name = benchmark.get('name', 'Unknown')
-            time = benchmark.get('real_time', 0)
-            cpu = benchmark.get('cpu_time', 0)
-            iterations = benchmark.get('iterations', 0)
+            row = "| "
+            for col_key in columns.keys():
+                value = benchmark.get(col_key, "N/A")
+                
+                # Format numeric values
+                if isinstance(value, (int, float)) and col_key not in ["iterations", "threads", "repetitions"]:
+                    row += f"{value:.2f} | "
+                else:
+                    row += f"{value} | "
             
-            table += f"| {name} | {time:.2f} | {cpu:.2f} | {iterations} |\n"
+            table += row + "\n"
     except Exception as e:
         print(f"Error creating benchmark table: {e}")
         return "[Error creating benchmark table]"
@@ -255,6 +309,7 @@ def replace_placeholders(template_content, results_dir, report_dir, assets_dir, 
     
     # Create tables and other formatted content
     benchmark_table = create_benchmark_table(benchmark_results)
+    benchmark_console_output = add_benchmark_table_output(results_dir)
     metadata_table = create_metadata_table(metadata)
     assembly_links = create_assembly_links(assembly_files)
     
@@ -263,6 +318,7 @@ def replace_placeholders(template_content, results_dir, report_dir, assets_dir, 
     
     # Replace Google Benchmark placeholders
     content = content.replace('{{GBENCH_TABLE}}', benchmark_table)
+    content = content.replace('{{GBENCH_CONSOLE_OUTPUT}}', benchmark_console_output)
     if benchmark_results:
         content = content.replace('{{GBENCH_JSON}}', f"```json\n{json.dumps(benchmark_results, indent=2)}\n```")
     else:
@@ -300,7 +356,7 @@ def replace_placeholders(template_content, results_dir, report_dir, assets_dir, 
     for func_name, asm_code in assembly_files.items():
         placeholder = f"{{{{ASSEMBLY:{func_name}}}}}"
         if placeholder in content:
-            content = content.replace(placeholder, asm_code)
+            content = content.replace(placeholder, f"{asm_code}")
     
     # Handle assembly placeholders that weren't replaced
     for match in re.finditer(r'{{ASSEMBLY:([^}]+)}}', content):
@@ -361,6 +417,26 @@ def replace_placeholders(template_content, results_dir, report_dir, assets_dir, 
             content = content.replace(match.group(0), f"[Asset Not Found: {filename}]")
     
     return content
+
+def add_benchmark_table_output(results_dir):
+    """Add the console/table output from Google Benchmark."""
+    benchmark_table_file = results_dir / "benchmark_output.txt"
+    if not benchmark_table_file.exists():
+        return "**Console output not available.**"
+    
+    try:
+        with open(benchmark_table_file, 'r') as f:
+            console_output = f.read()
+        
+        # Format as a code block
+        output = "### Console Output\n\n"
+        output += "```\n"
+        output += console_output
+        output += "```\n"
+        return output
+    except Exception as e:
+        print(f"Error reading benchmark table file: {e}")
+        return "**Error reading console output.**"
 
 def generate_report(results_dir):
     """Generate a report from the given results directory."""
