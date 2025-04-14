@@ -1,0 +1,47 @@
+# Build directories
+build/
+
+# CMake generated files
+CMakeCache.txt
+CMakeFiles/
+*.cmake
+!cmake/*.cmake
+!cmake/toolchains/*.cmake
+Makefile
+compile_commands.json
+
+# Executables
+*.exe
+*.out
+
+# IDEs and editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS specific files
+.DS_Store
+Thumbs.db
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.env/
+
+# Optional: Uncomment if you want to ignore large raw data files but keep metadata and benchmark outputs
+# results/**/perf.data
+# results/**/perf.data.*
+
+# Keep these directories and their important content
+!results/
+!reports/
+!scripts/
+
+# Dependencies installed via FetchContent (if you want to exclude them)
+_deps/

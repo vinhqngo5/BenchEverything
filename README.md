@@ -57,7 +57,7 @@ To provide a structured C++ benchmarking repository using Google Benchmark and C
 ### 1.2. Core Philosophy
 
 *   **Experiment-centric:** Each benchmark lives in its own isolated directory under `experiments/`.
-*   **Reproducibility:** Results are tagged with configuration details (platform, compiler, flags) and the exact Git commit hash. Builds are clean by default.
+*   **Reproducibility:** Results are tagged with configuration details (platform, compiler, flags) and a unique metadata hash. Builds are clean by default.
 *   **Centralized Configuration:** A primary Python script (`scripts/run_benchmarks.py`), potentially driven by config files, acts as the main user interface for defining *what* to run and *how*.
 *   **Extensibility:** The structure and scripts are designed to be easily modified to add new tools, metrics, platforms, or reporting formats.
 
@@ -70,7 +70,7 @@ To provide a structured C++ benchmarking repository using Google Benchmark and C
     *   Platform Identifier (e.g., `linux-x86_64`, `macos-arm64`)
     *   Compiler Identifier (e.g., `gcc-11.2.0`, `clang-14.0.1`, `msvc-19.32`)
     *   Build Flags Identifier (e.g., `Release_O3_native`, `Debug_O0_avx2`). This combines CMake Build Type (`Release`, `Debug`, `RelWithDebInfo`) with key optimization/architecture flags.
-    *   Git Commit Hash (Short hash used for directory structure, full hash in metadata).
+    *   Metadata Hash: A hash generated from the combination of platform, compiler, build flags, and timestamp, used to uniquely identify experiment runs.
 *   **Result:** Raw output data collected from running one experiment under a specific configuration. Stored under `results/` following a path derived from the Configuration. See [Section 3](#3-directory-structure).
 *   **Report:** Human-readable Markdown files generated from one or more results. Stored under `reports/`, mirroring the `results/` structure and including generated assets like plots. See [Section 7.1](#711-report-structure--assets).
 
@@ -112,19 +112,19 @@ BenchEverything/
 │   └── <platform>/ # e.g., linux-x86_64
 │       └── <compiler_id>/ # e.g., gcc-11.2.0
 │           └── <build_flags_id>/ # e.g., Release_O3_native
-│               └── <git_hash>/ # e.g., abc1234
+│               └── <metadata_hash>/ # e.g., a1b2c3d4 (hash based on platform, compiler, build flags, timestamp)
 │                   ├── <experiment_name>/
 │                   │   ├── benchmark_output.json # Google Benchmark raw JSON
 │                   │   ├── perf_stat.log # perf stat text output
 │                   │   ├── assembly/ # Directory for assembly snippets
 │                   │   │   └── <BM_Function_Name>.s
-│                   │   └── metadata.json # Timestamp, full hash, flags, perf cmd, env...
+│                   │   └── metadata.json # Timestamp, metadata hash, metadata source, flags, perf cmd, env...
 │                   └── ... (other experiments for this config & hash)
 └── reports/ # === Generated Reports === (Intended to be committed)
     └── <platform>/
         └── <compiler_id>/
             └── <build_flags_id>/
-                └── <git_hash>/
+                └── <metadata_hash>/
                     ├── <experiment_name>/ # Directory for this specific report instance
                     │   ├── report.md # The final Markdown report (from generate_report.py)
                     │   └── assets/ # Subdir for assets specific to this report
@@ -136,7 +136,7 @@ BenchEverything/
                     │       └── ...
                     ├── ALL_EXPERIMENTS_SUMMARY.md # Optional: Summary (from generate_combined_report.py)
                     └── comparisons/ # Reports comparing across configs/hashes (from generate_combined_report.py)
-                        ├── <comparison_name>.md # e.g., ExpA_GCC_vs_Clang_abc1234.md
+                        ├── <comparison_name>.md # e.g., ExpA_GCC_vs_Clang_a1b2c3d4.md
                         └── assets/ # Assets generated specifically for comparisons
                             └── <comparison_name>/
                                 └── gcc_vs_clang_timing.png

@@ -1,0 +1,23 @@
+# Integer Addition Benchmark
+
+This benchmark measures the performance of simple integer addition operations.
+
+## Configuration
+
+- Compiler: {{METADATA:config.compiler_version}}
+- Flags: `{{METADATA:config.cxx_flags_used}}`
+- Platform: {{METADATA:platform_id}}
+
+## Benchmark Results
+
+{{GBENCH_TABLE}}
+
+## Assembly Code
+
+```asm
+{{ASSEMBLY:BM_IntAddition}}
+```
+
+## Performance Counters
+
+{{PERF_SUMMARY}}
