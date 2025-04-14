@@ -10,18 +10,52 @@ import datetime
 import glob
 import shutil
 import hashlib
+import logging
 from pathlib import Path
+from colorama import init, Fore, Style
+
+# Initialize colorama
+init(autoreset=True)
+
+# Configure logging with colors
+def setup_logger():
+    """Configure a colored logger."""
+    logger = logging.getLogger("BenchEverything")
+    logger.setLevel(logging.INFO)
+    
+    # Create console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    
+    # Custom formatter with colors
+    class ColoredFormatter(logging.Formatter):
+        FORMATS = {
+            logging.DEBUG: Fore.CYAN + "%(levelname)s: %(message)s" + Style.RESET_ALL,
+            logging.INFO: "%(message)s",
+            logging.WARNING: Fore.YELLOW + "WARNING: %(message)s" + Style.RESET_ALL,
+            logging.ERROR: Fore.RED + "ERROR: %(message)s" + Style.RESET_ALL,
+            logging.CRITICAL: Fore.RED + Style.BRIGHT + "CRITICAL: %(message)s" + Style.RESET_ALL
+        }
+        
+        def format(self, record):
+            log_fmt = self.FORMATS.get(record.levelno)
+            formatter = logging.Formatter(log_fmt)
+            return formatter.format(record)
+    
+    console_handler.setFormatter(ColoredFormatter())
+    logger.addHandler(console_handler)
+    return logger
+
+# Set up the logger
+logger = setup_logger()
 
 # Get the project root directory
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-def generate_metadata_hash(compiler_name, build_flags_id, timestamp=None):
-    """Generate a hash based on metadata instead of git hash."""
-    if timestamp is None:
-        timestamp = datetime.datetime.now().isoformat()
-    
+def generate_metadata_hash(compiler_name, build_flags_id):
+    """Generate a hash based on metadata"""    
     # Concatenate key metadata elements
-    metadata_str = f"{platform.system()}-{platform.machine()}:{compiler_name}:{build_flags_id}:{timestamp}"
+    metadata_str = f"{platform.system()}-{platform.machine()}:{compiler_name}:{build_flags_id}"
     
     # Generate a short hash (8 characters)
     hash_obj = hashlib.md5(metadata_str.encode())
@@ -93,7 +127,7 @@ def get_experiment_config(experiment_name):
 
 def build_benchmark(compiler_config, build_flags_id="Release_O3", incremental=False):
     """Build the benchmark using the specified compiler configuration."""
-    print(f"Building with {compiler_config['name']}...")
+    logger.info(f"Building with {compiler_config['name']}...")
     
     # Get platform identifier
     platform_id = f"{platform.system().lower()}-{platform.machine()}"
@@ -103,7 +137,7 @@ def build_benchmark(compiler_config, build_flags_id="Release_O3", incremental=Fa
     
     # Clean build directory if not incremental
     if not incremental and build_dir.exists():
-        print(f"Cleaning build directory: {build_dir}")
+        logger.info(f"Cleaning build directory: {build_dir}")
         shutil.rmtree(build_dir)
     
     os.makedirs(build_dir, exist_ok=True)
@@ -133,7 +167,7 @@ def build_benchmark(compiler_config, build_flags_id="Release_O3", incremental=Fa
         f"-DCMAKE_CXX_FLAGS={cxx_flags}"
     ]
     
-    print(f"Running CMake command: {' '.join(cmake_cmd)}")
+    logger.info(f"Running CMake command: {' '.join(cmake_cmd)}")
     subprocess.run(cmake_cmd, check=True)
     
     # Run CMake build
@@ -174,7 +208,7 @@ def create_metadata(experiment, compiler_config, build_flags_id, cxx_flags, cmak
 
 def extract_assembly(build_dir, experiment, output_dir):
     """Extract assembly for benchmark functions."""
-    print(f"Extracting assembly for {experiment['name']}...")
+    logger.info(f"Extracting assembly for {experiment['name']}...")
     
     # Create assembly directory
     assembly_dir = output_dir / "assembly"
@@ -206,7 +240,7 @@ def extract_assembly(build_dir, experiment, output_dir):
             benchmark_functions = []
     
     if not benchmark_functions:
-        print(f"Warning: No benchmark functions found for {experiment['name']}")
+        logger.warning(f"No benchmark functions found for {experiment['name']}")
         return
     
     # Disassemble the executable
@@ -241,23 +275,22 @@ def extract_assembly(build_dir, experiment, output_dir):
             if func_asm:
                 with open(assembly_dir / f"{func_name}.s", "w") as f:
                     f.write('\n'.join(func_asm))
-                print(f"Extracted assembly for {func_name}")
+                logger.info(f"Extracted assembly for {func_name}")
             else:
-                print(f"Warning: Could not find assembly for {func_name}")
+                logger.warning(f"Could not find assembly for {func_name}")
                 
     except (subprocess.SubprocessError, FileNotFoundError) as e:
-        print(f"Warning: Failed to extract assembly: {e}")
+        logger.warning(f"Failed to extract assembly: {e}")
 
 def run_benchmark(experiment, build_dir, compiler_config, build_flags_id="Release_O3", force=False):
     """Run the benchmark and save results."""
-    print(f"Running benchmark for {experiment['name']}...")
+    logger.info(f"Running benchmark for {experiment['name']}...")
     
     # Generate a hash based on metadata
     timestamp = datetime.datetime.now().isoformat()
     metadata_hash, metadata_str = generate_metadata_hash(
         compiler_config['name'], 
-        build_flags_id,
-        timestamp
+        build_flags_id
     )
     
     # Get platform identifier
@@ -270,8 +303,8 @@ def run_benchmark(experiment, build_dir, compiler_config, build_flags_id="Releas
     
     # Check if results already exist
     if results_dir.exists() and not force:
-        print(f"Results for {experiment['name']} already exist at {results_dir}")
-        print(f"Use --force to overwrite existing results.")
+        logger.warning(f"Results for {experiment['name']} already exist at {results_dir}")
+        logger.warning(f"Use --force to overwrite existing results.")
         return results_dir
     
     # Create results directory
@@ -279,25 +312,39 @@ def run_benchmark(experiment, build_dir, compiler_config, build_flags_id="Releas
     
     # Benchmark executable path
     benchmark_exe = build_dir / "experiments" / experiment['name'] / experiment['benchmark_executable']
-    print(f"Looking for benchmark executable at: {benchmark_exe}")
+    logger.info(f"Looking for benchmark executable at: {benchmark_exe}")
     
-    # Results file path
+    # Results file paths
     benchmark_output_file = results_dir / "benchmark_output.json"
+    benchmark_table_file = results_dir / "benchmark_output.txt"
     
-    # Run the benchmark with Google Benchmark JSON output
-    benchmark_cmd = [
+    # Get experiment-specific Google Benchmark arguments
+    exp_config = get_experiment_config(experiment['name'])
+    gbench_args = []
+    if exp_config and "gbench_args" in exp_config:
+        gbench_args.extend(exp_config["gbench_args"].split())
+    
+    # First run: JSON output
+    json_benchmark_cmd = [
         str(benchmark_exe), 
         "--benchmark_format=json", 
         f"--benchmark_out={benchmark_output_file}"
     ]
+    json_benchmark_cmd.extend(gbench_args)
     
-    # Add any experiment-specific Google Benchmark arguments
-    exp_config = get_experiment_config(experiment['name'])
-    if exp_config and "gbench_args" in exp_config:
-        benchmark_cmd.extend(exp_config["gbench_args"].split())
+    logger.info(f"Running benchmark command for JSON output: {' '.join(json_benchmark_cmd)}")
+    subprocess.run(json_benchmark_cmd, check=True)
     
-    print(f"Running benchmark command: {' '.join(benchmark_cmd)}")
-    subprocess.run(benchmark_cmd, check=True)
+    # Second run: Console/table output
+    table_benchmark_cmd = [
+        str(benchmark_exe),
+        "--benchmark_format=console"
+    ]
+    table_benchmark_cmd.extend(gbench_args)
+    
+    logger.info(f"Running benchmark command for table output: {' '.join(table_benchmark_cmd)}")
+    with open(benchmark_table_file, 'w') as f:
+        subprocess.run(table_benchmark_cmd, stdout=f, check=True)
     
     # Run perf stat if available (Linux only)
     if platform.system() == "Linux":
@@ -314,14 +361,14 @@ def run_benchmark(experiment, build_dir, compiler_config, build_flags_id="Releas
                 "-o", str(perf_stat_file),
                 "-e", perf_events
             ]
-            perf_cmd.extend(benchmark_cmd)
+            perf_cmd.extend(json_benchmark_cmd)  # Using the JSON command since we've already saved the table format
             
             subprocess.run(perf_cmd, check=True)
-            print(f"Performance counters collected with perf")
+            logger.info(f"Performance counters collected with perf")
         except (subprocess.SubprocessError, FileNotFoundError) as e:
-            print(f"Warning: Failed to run perf: {e}")
+            logger.warning(f"Failed to run perf: {e}")
     else:
-        print(f"Performance counters not collected (perf only available on Linux)")
+        logger.info(f"Performance counters not collected (perf only available on Linux)")
     
     # Extract assembly
     extract_assembly(build_dir, experiment, results_dir)
@@ -342,7 +389,7 @@ def run_benchmark(experiment, build_dir, compiler_config, build_flags_id="Releas
     with open(results_dir / "metadata.json", "w") as f:
         json.dump(metadata, f, indent=2)
     
-    print(f"Results saved to {results_dir}")
+    logger.info(f"Results saved to {results_dir}")
     return results_dir
 
 def main():
@@ -398,10 +445,10 @@ def main():
                 )
                 
         except subprocess.CalledProcessError as e:
-            print(f"Error running benchmark with {compiler_config['name']}: {e}", file=sys.stderr)
+            logger.error(f"Error running benchmark with {compiler_config['name']}: {e}")
             continue
         except Exception as e:
-            print(f"Unexpected error with {compiler_config['name']}: {e}", file=sys.stderr)
+            logger.error(f"Unexpected error with {compiler_config['name']}: {e}")
             continue
 
 if __name__ == "__main__":

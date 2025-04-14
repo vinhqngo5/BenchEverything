@@ -1,8 +1,8 @@
 {
   "context": {
-    "date": "2025-04-14T19:21:18+02:00",
+    "date": "2025-04-14T20:06:00+02:00",
     "host_name": "CM-K6R9HXDHXQ",
-    "executable": "/Users/vinhq/Library/CloudStorage/OneDrive-Chalmers/Desktop/Q22025/BenchEverything/build/darwin-arm64/clang/Release_O3/experiments/int_addition/int_addition_benchmark",
+    "executable": "/Users/vinhq/Library/CloudStorage/OneDrive-Chalmers/Desktop/Q22025/BenchEverything/build/darwin-arm64/gcc/Release_O3/experiments/int_addition/int_addition_benchmark",
     "num_cpus": 11,
     "mhz_per_cpu": 24,
     "cpu_scaling_enabled": false,
@@ -26,7 +26,7 @@
         "num_sharing": 1
       }
     ],
-    "load_avg": [11.0273,5.94824,4.4502],
+    "load_avg": [18.1694,13.2432,8.57422],
     "library_build_type": "release"
   },
   "benchmarks": [
@@ -40,8 +40,8 @@
       "repetition_index": 0,
       "threads": 1,
       "iterations": 1000000000,
-      "real_time": 2.7974470797926188e-01,
-      "cpu_time": 2.7965599999999990e-01,
+      "real_time": 2.7236099995207042e-01,
+      "cpu_time": 2.7235600000000004e-01,
       "time_unit": "ns"
     }
   ]

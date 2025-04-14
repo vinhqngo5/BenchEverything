@@ -1,8 +1,8 @@
 {
   "context": {
-    "date": "2025-04-14T19:20:18+02:00",
+    "date": "2025-04-14T20:06:15+02:00",
     "host_name": "CM-K6R9HXDHXQ",
-    "executable": "/Users/vinhq/Library/CloudStorage/OneDrive-Chalmers/Desktop/Q22025/BenchEverything/build/darwin-arm64/gcc/Release_O3/experiments/int_addition/int_addition_benchmark",
+    "executable": "/Users/vinhq/Library/CloudStorage/OneDrive-Chalmers/Desktop/Q22025/BenchEverything/build/darwin-arm64/clang/Release_O3/experiments/float_addition/float_addition_benchmark",
     "num_cpus": 11,
     "mhz_per_cpu": 24,
     "cpu_scaling_enabled": false,
@@ -26,22 +26,22 @@
         "num_sharing": 1
       }
     ],
-    "load_avg": [11.4536,5.11963,4.08301],
+    "load_avg": [23.3638,14.6973,9.20068],
     "library_build_type": "release"
   },
   "benchmarks": [
     {
-      "name": "BM_IntAddition",
+      "name": "BM_FloatAddition",
       "family_index": 0,
       "per_family_instance_index": 0,
-      "run_name": "BM_IntAddition",
+      "run_name": "BM_FloatAddition",
       "run_type": "iteration",
       "repetitions": 1,
       "repetition_index": 0,
       "threads": 1,
       "iterations": 1000000000,
-      "real_time": 2.7392279199557373e-01,
-      "cpu_time": 2.7391799999999988e-01,
+      "real_time": 2.7205299999332061e-01,
+      "cpu_time": 2.7200299999999999e-01,
       "time_unit": "ns"
     }
   ]

@@ -1,7 +1,7 @@
 {
-  "timestamp_iso": "2025-04-14T19:21:20.332733",
-  "metadata_hash": "1cc0a6de",
-  "metadata_source": "Darwin-arm64:clang:Release_O3:2025-04-14T19:21:18.891421",
+  "timestamp_iso": "2025-04-14T20:06:14.521462",
+  "metadata_hash": "4844d04b",
+  "metadata_source": "Darwin-arm64:clang:Release_O3",
   "platform_id": "darwin-arm64",
   "compiler_id": "clang",
   "build_flags_id": "Release_O3",
@@ -19,6 +19,6 @@
     "cmake_build_type": "Release",
     "cxx_flags_used": "-std=c++20",
     "toolchain_file": "cmake/toolchains/clang.cmake",
-    "gbench_command": "float_addition_benchmark --benchmark_format=json --benchmark_out=..."
+    "gbench_command": "int_addition_benchmark --benchmark_format=json --benchmark_out=..."
   }
 }

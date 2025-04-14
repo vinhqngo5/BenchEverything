@@ -9,8 +9,45 @@ import platform
 import subprocess
 import re
 import hashlib
+import logging
 from pathlib import Path
 from datetime import datetime
+from colorama import init, Fore, Style
+
+# Initialize colorama
+init(autoreset=True)
+
+# Configure logging with colors
+def setup_logger():
+    """Configure a colored logger."""
+    logger = logging.getLogger("BenchEverything")
+    logger.setLevel(logging.INFO)
+    
+    # Create console handler
+    console_handler = logging.StreamHandler()
+    console_handler.setLevel(logging.INFO)
+    
+    # Custom formatter with colors
+    class ColoredFormatter(logging.Formatter):
+        FORMATS = {
+            logging.DEBUG: Fore.CYAN + "%(levelname)s: %(message)s" + Style.RESET_ALL,
+            logging.INFO: "%(message)s",
+            logging.WARNING: Fore.YELLOW + "WARNING: %(message)s" + Style.RESET_ALL,
+            logging.ERROR: Fore.RED + "ERROR: %(message)s" + Style.RESET_ALL,
+            logging.CRITICAL: Fore.RED + Style.BRIGHT + "CRITICAL: %(message)s" + Style.RESET_ALL
+        }
+        
+        def format(self, record):
+            log_fmt = self.FORMATS.get(record.levelno)
+            formatter = logging.Formatter(log_fmt)
+            return formatter.format(record)
+    
+    console_handler.setFormatter(ColoredFormatter())
+    logger.addHandler(console_handler)
+    return logger
+
+# Set up the logger
+logger = setup_logger()
 
 # Get the project root directory
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -54,12 +91,12 @@ def run_pre_report_script(experiment_name, results_dir, assets_dir):
                 "--results-dir", str(results_dir),
                 "--output-dir", str(assets_dir)
             ]
-            print(f"Running pre-report script: {' '.join(cmd)}")
+            logger.info(f"Running pre-report script: {' '.join(cmd)}")
             subprocess.run(cmd, check=True)
-            print(f"Pre-report script completed successfully")
+            logger.info(f"Pre-report script completed successfully")
             return True
         except subprocess.SubprocessError as e:
-            print(f"Warning: Pre-report script failed: {e}")
+            logger.warning(f"Pre-report script failed: {e}")
     return False
 
 def create_report_directories(results_dir):
@@ -98,7 +135,7 @@ def create_report_directories(results_dir):
                 # 'results' not found in path
                 pass
     except Exception as e:
-        print(f"Error parsing results directory: {e}")
+        logger.error(f"Error parsing results directory: {e}")
     
     # Fallback approach: Try to extract information from the results directory name
     try:
@@ -113,35 +150,35 @@ def create_report_directories(results_dir):
         
         return report_dir, assets_dir, experiment_name
     except Exception as e:
-        print(f"Error creating report directories: {e}")
+        logger.error(f"Error creating report directories: {e}")
         sys.exit(1)
 
 def parse_benchmark_results(results_dir):
     """Parse Google Benchmark results from benchmark_output.json."""
     benchmark_file = results_dir / "benchmark_output.json"
     if not benchmark_file.exists():
-        print(f"Error: Benchmark results file not found: {benchmark_file}")
+        logger.error(f"Benchmark results file not found: {benchmark_file}")
         return None
     
     try:
         with open(benchmark_file, 'r') as f:
             return json.load(f)
     except json.JSONDecodeError as e:
-        print(f"Error parsing benchmark results: {e}")
+        logger.error(f"Error parsing benchmark results: {e}")
         return None
 
 def parse_metadata(results_dir):
     """Parse metadata from metadata.json."""
     metadata_file = results_dir / "metadata.json"
     if not metadata_file.exists():
-        print(f"Warning: Metadata file not found: {metadata_file}")
+        logger.warning(f"Metadata file not found: {metadata_file}")
         return {}
     
     try:
         with open(metadata_file, 'r') as f:
             return json.load(f)
     except json.JSONDecodeError as e:
-        print(f"Error parsing metadata: {e}")
+        logger.error(f"Error parsing metadata: {e}")
         return {}
 
 def parse_perf_data(results_dir):
@@ -158,7 +195,7 @@ def parse_perf_data(results_dir):
         # In a real implementation, you might want to parse and format this more nicely
         return perf_data
     except Exception as e:
-        print(f"Error parsing perf data: {e}")
+        logger.error(f"Error parsing perf data: {e}")
         return "Error parsing performance counter data"
 
 def find_assembly_files(results_dir):
@@ -174,7 +211,7 @@ def find_assembly_files(results_dir):
             with open(asm_file, 'r') as f:
                 assembly_files[func_name] = f.read()
         except Exception as e:
-            print(f"Error reading assembly file {asm_file}: {e}")
+            logger.error(f"Error reading assembly file {asm_file}: {e}")
             assembly_files[func_name] = f"Error reading assembly for {func_name}"
     
     return assembly_files
@@ -250,7 +287,7 @@ def create_benchmark_table(benchmark_results):
             
             table += row + "\n"
     except Exception as e:
-        print(f"Error creating benchmark table: {e}")
+        logger.error(f"Error creating benchmark table: {e}")
         return "[Error creating benchmark table]"
     
     return table
@@ -276,7 +313,7 @@ def create_metadata_table(metadata):
         table += f"| C++ Flags | {config.get('cxx_flags_used', 'Unknown')} |\n"
         table += f"| CMake Build Type | {config.get('cmake_build_type', 'Unknown')} |\n"
     except Exception as e:
-        print(f"Error creating metadata table: {e}")
+        logger.error(f"Error creating metadata table: {e}")
         return "[Error creating metadata table]"
     
     return table
@@ -435,7 +472,7 @@ def add_benchmark_table_output(results_dir):
         output += "```\n"
         return output
     except Exception as e:
-        print(f"Error reading benchmark table file: {e}")
+        logger.error(f"Error reading benchmark table file: {e}")
         return "**Error reading console output.**"
 
 def generate_report(results_dir):
@@ -444,7 +481,7 @@ def generate_report(results_dir):
     
     # Check if results directory exists
     if not results_dir.exists():
-        print(f"Error: Results directory not found: {results_dir}")
+        logger.error(f"Results directory not found: {results_dir}")
         return False
     
     # Get experiment name from the results directory
@@ -459,9 +496,9 @@ def generate_report(results_dir):
                 if 'metadata_hash' in metadata:
                     # Verify that the metadata hash matches the directory name
                     if results_dir.parent.name != metadata['metadata_hash']:
-                        print(f"Warning: Metadata hash in file ({metadata['metadata_hash']}) doesn't match directory name ({results_dir.parent.name})")
+                        logger.warning(f"Metadata hash in file ({metadata['metadata_hash']}) doesn't match directory name ({results_dir.parent.name})")
         except Exception as e:
-            print(f"Warning: Could not verify metadata hash: {e}")
+            logger.warning(f"Could not verify metadata hash: {e}")
     
     # Create report directories
     report_dir, assets_dir, experiment_name = create_report_directories(results_dir)
@@ -469,7 +506,7 @@ def generate_report(results_dir):
     # Find template file
     template_path = find_template_file(experiment_name)
     if not template_path:
-        print(f"Error: Template file not found for experiment: {experiment_name}")
+        logger.error(f"Template file not found for experiment: {experiment_name}")
         return False
     
     # Read template content
@@ -477,7 +514,7 @@ def generate_report(results_dir):
         with open(template_path, 'r') as f:
             template_content = f.read()
     except Exception as e:
-        print(f"Error reading template file: {e}")
+        logger.error(f"Error reading template file: {e}")
         return False
     
     # Run pre-report script
@@ -491,25 +528,76 @@ def generate_report(results_dir):
     try:
         with open(report_path, 'w') as f:
             f.write(report_content)
-        print(f"Report generated successfully: {report_path}")
+        logger.info(f"Report generated successfully: {report_path}")
         return True
     except Exception as e:
-        print(f"Error writing report: {e}")
+        logger.error(f"Error writing report: {e}")
         return False
+
+def find_all_result_directories():
+    """Find all available result directories in the results/ folder."""
+    results_dirs = []
+    
+    # Pattern to match result directories with the expected structure
+    # <results>/<platform>/<compiler>/<build_flags>/<metadata_hash>/<experiment>
+    pattern = str(PROJECT_ROOT / "results" / "**" / "**" / "**" / "**" / "**")
+    
+    for path in glob.glob(pattern, recursive=True):
+        path = Path(path)
+        # Check if it's a directory and contains metadata.json (confirming it's a valid result directory)
+        if path.is_dir() and (path / "metadata.json").exists():
+            results_dirs.append(path)
+    
+    return results_dirs
 
 def main():
     """Main function to generate reports."""
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description='Generate a report from benchmark results')
-    parser.add_argument('--result-dir', required=True,
-                        help='Path to the result directory')
+    parser.add_argument('--result-dir', 
+                        help='Path to the result directory. If not specified, reports will be generated for all available results')
     args = parser.parse_args()
     
-    # Generate report
-    success = generate_report(args.result_dir)
-    
-    # Exit with appropriate status code
-    sys.exit(0 if success else 1)
+    if args.result_dir:
+        # Generate report for a specific result directory
+        success = generate_report(args.result_dir)
+        # Exit with appropriate status code
+        sys.exit(0 if success else 1)
+    else:
+        # Generate reports for all available result directories
+        logger.info("No specific result directory provided. Generating reports for all available results...")
+        results_dirs = find_all_result_directories()
+        
+        if not results_dirs:
+            logger.info("No result directories found. Make sure you have run benchmarks first.")
+            sys.exit(1)
+        
+        # Track success status
+        all_success = True
+        successful_reports = 0
+        failed_reports = 0
+        
+        for result_dir in results_dirs:
+            logger.info(f"\nProcessing result directory: {result_dir}")
+            try:
+                success = generate_report(result_dir)
+                if success:
+                    successful_reports += 1
+                else:
+                    failed_reports += 1
+                    all_success = False
+            except Exception as e:
+                logger.error(f"Error generating report for {result_dir}: {e}")
+                failed_reports += 1
+                all_success = False
+        
+        # Print summary
+        logger.info(f"\nReport generation complete.")
+        logger.info(f"Successfully generated reports: {successful_reports}")
+        if failed_reports > 0:
+            logger.info(f"Failed to generate reports: {failed_reports}")
+        
+        sys.exit(0 if all_success else 1)
 
 if __name__ == "__main__":
     main()
