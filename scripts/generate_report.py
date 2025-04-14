@@ -548,6 +548,9 @@ def find_all_result_directories():
         if path.is_dir() and (path / "metadata.json").exists():
             results_dirs.append(path)
     
+    # remove duplicates
+    results_dirs = list(set(results_dirs))
+    
     return results_dirs
 
 def main():
