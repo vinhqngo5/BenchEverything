@@ -362,6 +362,44 @@ def create_metadata(experiment, compiler_config, build_flags_id, cxx_flags, cmak
     
     return metadata
 
+def _get_benchmark_functions_nm_mapping(benchmark_exe):
+    """Get a mapping from benchmark function names to their mangled names using nm."""
+    try:
+        # Run nm with demangling to get symbol information
+        nm_cmd = ["nm", "-C", str(benchmark_exe)]
+        result = subprocess.run(nm_cmd, capture_output=True, text=True, check=True)
+        
+        # Parse the output to find benchmark functions
+        benchmark_functions = []
+        name_mapping = {}  # Maps benchmark names to their fully mangled versions
+        
+        for line in result.stdout.splitlines():
+            if "BM_" in line:  # Only look at benchmark functions
+                parts = line.split(' ', 2)
+                if len(parts) >= 3:
+                    demangled_name = parts[2]
+                    # Extract just the function name part for our benchmark functions
+                    if demangled_name.startswith("void BM_"):
+                        # Remove the "void " prefix and anything after the function signature
+                        func_sig = demangled_name.split("(")[0][5:]  # Remove "void " and anything after "("
+                        
+                        # Simplify the name for matching purposes (converts from mangled to clean name)
+                        clean_name = func_sig
+                        # Replace std::__1:: with std::
+                        clean_name = clean_name.replace("std::__1::", "std::")
+                        # Remove allocator references
+                        clean_name = re.sub(r', std::\w+<[^>]+>\s*>', '>', clean_name)
+                        
+                        # Add to the list of benchmark functions
+                        benchmark_functions.append(clean_name)
+                        # Save mapping between clean name and demangled name
+                        name_mapping[clean_name] = func_sig
+        
+        return benchmark_functions, name_mapping
+    except Exception as e:
+        logger.warning(f"Error getting function names using nm: {e}")
+        return [], {}
+
 def extract_assembly(build_dir, experiment, output_dir, build_flags_id="Release_O3"):
     """Extract assembly for benchmark functions with source code mapping."""
     logger.info(f"Extracting assembly for {experiment['name']}...")
@@ -374,7 +412,13 @@ def extract_assembly(build_dir, experiment, output_dir, build_flags_id="Release_
     benchmark_exe = build_dir / "experiments" / experiment['name'] / experiment['benchmark_executable']
     
     # First, try to get list of benchmark functions
-    benchmark_functions = _get_benchmark_functions(benchmark_exe, experiment)
+    # Try to get benchmark functions from nm first (more reliable)
+    benchmark_functions, name_mapping = _get_benchmark_functions_nm_mapping(benchmark_exe)
+    
+    # If that fails, fall back to the original method
+    if not benchmark_functions:
+        logger.info("Could not get benchmark functions from nm, falling back to --benchmark_list_tests")
+        benchmark_functions = _get_benchmark_functions(benchmark_exe, experiment)
     
     if not benchmark_functions:
         logger.warning(f"No benchmark functions found for {experiment['name']}")
@@ -395,21 +439,21 @@ def extract_assembly(build_dir, experiment, output_dir, build_flags_id="Release_
                 _run_dsymutil(benchmark_exe)
             
             # Try to extract assembly with objdump and debug info
-            success = _extract_with_objdump(benchmark_exe, benchmark_functions, assembly_dir, True)
+            success = _extract_with_objdump(benchmark_exe, benchmark_functions, assembly_dir, has_debug_info, name_mapping)
             
             if not success:
                 logger.info("Objdump extraction with debug info failed, falling back to manual extraction")
-                manual_extraction(benchmark_exe, benchmark_functions, source_files, assembly_dir)
+                manual_extraction(benchmark_exe, benchmark_functions, source_files, assembly_dir, name_mapping)
         else:
             # For Release builds without debug info, use manual extraction
             logger.info("Release build without debug info, using manual assembly extraction")
-            manual_extraction(benchmark_exe, benchmark_functions, source_files, assembly_dir)
+            manual_extraction(benchmark_exe, benchmark_functions, source_files, assembly_dir, name_mapping)
             
     except Exception as e:
         logger.warning(f"Error extracting assembly: {e}")
         # Fall back to manual extraction as last resort
         logger.info("Using manual assembly extraction as fallback")
-        manual_extraction(benchmark_exe, benchmark_functions, source_files, assembly_dir)
+        manual_extraction(benchmark_exe, benchmark_functions, source_files, assembly_dir, name_mapping)
 
 def _get_benchmark_functions(benchmark_exe, experiment):
     """Get list of benchmark functions."""
@@ -459,7 +503,7 @@ def _run_dsymutil(benchmark_exe):
         logger.warning(f"Failed to run dsymutil: {e}")
         return False
 
-def _extract_with_objdump(benchmark_exe, benchmark_functions, assembly_dir, has_debug_info):
+def _extract_with_objdump(benchmark_exe, benchmark_functions, assembly_dir, has_debug_info, name_mapping=None):
     """Extract assembly using objdump with appropriate flags."""
     try:
         # Build objdump command with appropriate flags
@@ -479,7 +523,10 @@ def _extract_with_objdump(benchmark_exe, benchmark_functions, assembly_dir, has_
         
         # Extract function-specific assembly
         for func_name in benchmark_functions:
-            func_asm = _extract_function_assembly(mixed_assembly, func_name)
+            # If we have name mapping from nm, use it for more precise matching
+            lookup_name = name_mapping.get(func_name, func_name) if name_mapping else func_name
+            
+            func_asm = _extract_function_assembly(mixed_assembly, lookup_name, func_name)
             
             if func_asm:
                 with open(assembly_dir / f"{func_name}.s", "w") as f:
@@ -493,16 +540,29 @@ def _extract_with_objdump(benchmark_exe, benchmark_functions, assembly_dir, has_
         logger.warning(f"Error extracting assembly with objdump: {e}")
         return False
 
-def _extract_function_assembly(assembly_text, func_name):
-    """Extract assembly for a specific function from full assembly text."""
+def _extract_function_assembly(assembly_text, lookup_name, original_name=None):
+    """Extract assembly for a specific function from full assembly text.
+    
+    Args:
+        assembly_text: The full assembly text to search
+        lookup_name: The actual name to look for in the assembly (possibly mangled)
+        original_name: The original benchmark name (for comments)
+    """
     lines = assembly_text.splitlines()
     func_asm = []
     capturing = False
     
+    # Use the original name for comments if provided
+    comment_name = original_name if original_name else lookup_name
+    
+    # Try direct match first
     for i, line in enumerate(lines):
         # Look for function start marker
-        if func_name in line and "<" in line and ">" in line:
+        if lookup_name in line and ":" in line:
             capturing = True
+            # Add a comment with the original benchmark name if it's different
+            if original_name and lookup_name != original_name:
+                func_asm.append(f"// Assembly for benchmark function: {original_name}")
             func_asm.append(line)
         elif capturing:
             # Look for function end marker (next function or end of file)
@@ -511,9 +571,30 @@ def _extract_function_assembly(assembly_text, func_name):
             else:
                 func_asm.append(line)
     
+    # If we didn't find a match but have a template function, try a more flexible approach
+    if not func_asm and "<" in lookup_name and ">" in lookup_name:
+        # Get the base name (before the template part)
+        base_name = lookup_name.split("<")[0]
+        
+        for i, line in enumerate(lines):
+            if base_name in line and "<" in line and ">" in line and ":" in line:
+                # Make sure this is the right function by checking parts of the template
+                template_parts = re.findall(r'<([^<>]+)>', lookup_name)
+                if template_parts and all(part in line for part in template_parts):
+                    capturing = True
+                    # Add a comment with the original benchmark name
+                    if original_name:
+                        func_asm.append(f"// Assembly for benchmark function: {original_name}")
+                    func_asm.append(line)
+            elif capturing:
+                if "<" in line and ">" in line and ":" in line and not line.strip().startswith("."):
+                    capturing = False
+                else:
+                    func_asm.append(line)
+    
     return func_asm
 
-def manual_extraction(benchmark_exe, benchmark_functions, source_files, assembly_dir):
+def manual_extraction(benchmark_exe, benchmark_functions, source_files, assembly_dir, name_mapping=None):
     """Fallback function to extract assembly and manually combine with source."""
     try:
         # Try with standard objdump
@@ -525,23 +606,29 @@ def manual_extraction(benchmark_exe, benchmark_functions, source_files, assembly
         with open(assembly_dir / "full_disassembly.txt", "w") as f:
             f.write(disassembly)
         
-        # Extract function-specific assembly
+        # Extract function-specific assembly using nm name mapping if available
+        lines = disassembly.split('\n')
+        
         for func_name in benchmark_functions:
-            # Look for the function in the disassembly
-            lines = disassembly.split('\n')
-            capturing = False
-            func_asm = []
+            # If we have a name mapping from nm, use the mapped name for lookup
+            lookup_name = name_mapping.get(func_name, func_name) if name_mapping else func_name
             
-            for line in lines:
-                if func_name in line and ":" in line:
-                    capturing = True
-                    func_asm.append(line)
-                elif capturing:
-                    if "<" in line and ">" in line and ":" in line and not line.strip().startswith("."):
-                        # Likely a new function
-                        capturing = False
-                    else:
-                        func_asm.append(line)
+            # Try with the mapped name from nm first
+            func_asm = _extract_direct_match(lines, lookup_name, func_name)
+            
+            # If that fails and we don't have a mapping or the mapping didn't help,
+            # fall back to our multi-strategy approach
+            if not func_asm and (not name_mapping or lookup_name == func_name):
+                # Strategy 2: Regex pattern match for C++ templates
+                func_asm = _extract_template_match(lines, func_name)
+                
+                # Strategy 3: Base name match
+                if not func_asm:
+                    func_asm = _extract_base_name_match(lines, func_name)
+                
+                # Strategy 4: Generic pattern match (most relaxed)
+                if not func_asm:
+                    func_asm = _extract_generic_match(lines, func_name)
             
             if func_asm:
                 with open(assembly_dir / f"{func_name}.s", "w") as f:
@@ -551,12 +638,12 @@ def manual_extraction(benchmark_exe, benchmark_functions, source_files, assembly
                         for source_file, content in source_files.items():
                             if func_name in content:
                                 # Extract the function from source (simple approach)
-                                lines = content.split('\n')
+                                src_lines = content.split('\n')
                                 func_lines = []
                                 in_func = False
                                 brace_count = 0
                                 
-                                for source_line in lines:
+                                for source_line in src_lines:
                                     if func_name in source_line and '{' in source_line:
                                         in_func = True
                                         brace_count = 1
@@ -575,12 +662,126 @@ def manual_extraction(benchmark_exe, benchmark_functions, source_files, assembly
                         f.write("// Assembly:\n")
                     
                     f.write('\n'.join(func_asm))
-                logger.info(f"Extracted assembly for {func_name} (with manually added source)")
+                logger.info(f"Extracted assembly for {func_name}")
             else:
                 logger.warning(f"Could not find assembly for {func_name}")
                 
     except (subprocess.SubprocessError, FileNotFoundError) as e:
         logger.warning(f"Failed to extract assembly: {e}")
+
+def _extract_direct_match(lines, lookup_name, original_name=None):
+    """Extract assembly using direct string match."""
+    func_asm = []
+    capturing = False
+    
+    # Use the original name for comments if provided
+    comment_name = original_name if original_name else lookup_name
+    
+    for line in lines:
+        if lookup_name in line and ":" in line:
+            capturing = True
+            # Add a comment with the original benchmark name if it's different
+            if original_name and lookup_name != original_name:
+                func_asm.append(f"// Assembly for benchmark function: {comment_name}")
+            func_asm.append(line)
+        elif capturing:
+            if "<" in line and ">" in line and ":" in line and not line.strip().startswith("."):
+                capturing = False
+            else:
+                func_asm.append(line)
+    
+    return func_asm
+
+def _extract_template_match(lines, func_name):
+    """Extract assembly using regex matching for C++ templates."""
+    func_asm = []
+    capturing = False
+    
+    # Extract base name and template part
+    match = re.match(r'([^<]+)(<.*>)?', func_name)
+    if not match:
+        return []
+        
+    base_name, template_part = match.groups()
+    
+    # Create regex pattern for mangled name
+    if template_part:
+        # Remove spaces for better matching
+        clean_template = template_part.replace(" ", "")
+        
+        # Replace std:: with std::(__1::)? to handle libc++ mangling
+        template_regex = clean_template.replace('std::', r'std::(?:__1::)?')
+        
+        # Handle additional template parameters that might be added
+        template_regex = re.sub(r'>$', r'(?:,std::(?:__1::)?allocator<[^>]+>)?>)', template_regex)
+        
+        # Make the pattern more flexible by allowing extra characters
+        pattern = re.compile(re.escape(base_name) + r'<.*' + 
+                            re.escape(clean_template.split('<')[1].split('>')[0].split(',')[0]) + 
+                            r'.*>')
+    else:
+        pattern = re.compile(re.escape(base_name) + r'(?:<.*>)?')
+    
+    # Try to find the function with the regex pattern
+    for line in lines:
+        if "<" in line and ">" in line and ":" in line and pattern.search(line):
+            capturing = True
+            func_asm.append(f"// Best-effort match for {func_name} using pattern matching:\n{line}")
+        elif capturing:
+            if "<" in line and ">" in line and ":" in line and not line.strip().startswith("."):
+                capturing = False
+            else:
+                func_asm.append(line)
+    
+    return func_asm
+
+def _extract_base_name_match(lines, func_name):
+    """Extract assembly using just the base name of the function."""
+    func_asm = []
+    capturing = False
+    
+    # Get base name without any templates
+    base_name = func_name.split('<')[0] if '<' in func_name else func_name
+    
+    for line in lines:
+        if base_name in line and "<" in line and ">" in line and ":" in line:
+            capturing = True
+            func_asm.append(f"// Possible match for {func_name} using base name {base_name}:\n{line}")
+        elif capturing:
+            if "<" in line and ">" in line and ":" in line and not line.strip().startswith("."):
+                capturing = False
+            else:
+                func_asm.append(line)
+    
+    return func_asm
+
+def _extract_generic_match(lines, func_name):
+    """Generic pattern matching as a last resort."""
+    func_asm = []
+    capturing = False
+    
+    # For templated functions, extract the template arguments to look for
+    template_args = []
+    if '<' in func_name and '>' in func_name:
+        template_part = func_name[func_name.find('<')+1:func_name.rfind('>')]
+        # Extract container types and values for matching
+        template_args = re.findall(r'std::(\w+)|(\d+)', template_part)
+        template_args = [x[0] or x[1] for x in template_args if x[0] or x[1]]
+    
+    # If we have template args, look for lines containing both the base function name and the args
+    if template_args:
+        base_name = func_name.split('<')[0]
+        for line in lines:
+            if base_name in line and all(arg in line for arg in template_args) and "<" in line and ":" in line:
+                capturing = True
+                func_asm.append(f"// Best-effort match for {func_name} using pattern matching:\n{line}")
+            elif capturing:
+                if "<" in line and ">" in line and ":" in line and not line.strip().startswith("."):
+                    capturing = False
+                else:
+                    func_asm.append(line)
+    
+    return func_asm
 
 def run_benchmark(experiment, build_dir, compiler_config, build_flags_id="Release_O3", force=False):
     """Run the benchmark and save results."""
