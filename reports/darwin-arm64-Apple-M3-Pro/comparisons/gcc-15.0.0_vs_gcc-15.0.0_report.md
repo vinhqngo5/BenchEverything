@@ -1,6 +1,6 @@
 # Comparison Report: GCC 15.0.0 (Debug_O0) vs GCC 15.0.0 (Release_O3)
 
-Generated on: 2025-04-15 19:48:13
+Generated on: 2025-04-15 20:57:50
 
 ## Table of Contents
 
@@ -8,7 +8,8 @@ Generated on: 2025-04-15 19:48:13
 2. [Summary of Results](#summary-of-results)
 3. [int_addition](#int_addition)
 4. [float_addition](#float_addition)
-5. [Failed Comparisons](#failed-comparisons)
+5. [container_push_back](#container_push_back)
+6. [Failed Comparisons](#failed-comparisons)
 
 ## Summary of Results
 
@@ -93,3 +94,8 @@ Path: `results/darwin-arm64-Apple-M3-Pro/gcc-15.0.0/Release_O3/26359d46`
 - **Iterations differ:** Baseline: [336031184], Contender: [1000000000]
 
 
+## Failed Comparisons
+
+| Experiment | Reason |
+|------------|--------|
+| container_push_back | Baseline data missing |

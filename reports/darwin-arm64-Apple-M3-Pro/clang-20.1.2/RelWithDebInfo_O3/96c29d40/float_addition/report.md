@@ -51,9 +51,7 @@ This benchmark measures the performance of simple floating-point addition operat
 
 ## Performance Counters
 
-```
 Performance counter data not available
-```
 
 ## Related Resources
 

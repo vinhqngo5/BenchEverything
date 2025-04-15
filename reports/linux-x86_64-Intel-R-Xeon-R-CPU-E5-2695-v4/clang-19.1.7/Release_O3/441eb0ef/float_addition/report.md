@@ -64,7 +64,6 @@ static void BM_FloatAddition(benchmark::State& state) {
 
 ## Performance Counters
 
-```
 # started on Tue Apr 15 14:32:51 2025
 
 
@@ -82,7 +81,6 @@ static void BM_FloatAddition(benchmark::State& state) {
 
 
 
-```
 
 ## Related Resources
 

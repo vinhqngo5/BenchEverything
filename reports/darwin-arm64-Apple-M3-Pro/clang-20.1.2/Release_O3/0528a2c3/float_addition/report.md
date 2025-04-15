@@ -15,7 +15,7 @@ This benchmark measures the performance of simple floating-point addition operat
 
 | Benchmark | Time (ns) | CPU (ns) | Iterations | Repetitions | Threads | 
 | --------- | --------- | -------- | ---------- | ----------- | ------- | 
-| BM_FloatAddition | 0.28 | 0.28 | 1000000000 | 1 | 1 | 
+| BM_FloatAddition | 0.27 | 0.27 | 1000000000 | 1 | 1 | 
 
 
 ## Assembly Code
@@ -60,9 +60,7 @@ static void BM_FloatAddition(benchmark::State& state) {
 
 ## Performance Counters
 
-```
 Performance counter data not available
-```
 
 ## Related Resources
 
