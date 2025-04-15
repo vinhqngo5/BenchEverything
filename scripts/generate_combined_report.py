@@ -638,19 +638,19 @@ def create_comparison_report(baseline_dir, contender_dir, experiment_names=None,
         # Add links to reports and results
         report_content += "#### Baseline\n"
         if baseline_report:
-            report_content += f"- [Report]({get_path_for_report(baseline_report)})\n"
+            report_content += f"- [Report]({get_path_for_report(baseline_report, report_dir)})\n"
         else:
             report_content += "- Report: Not available\n"
         
-        report_content += f"- [Raw Results]({get_path_for_report(baseline_results)})\n\n"
+        report_content += f"- [Raw Results]({get_path_for_report(baseline_results, report_dir)})\n\n"
         
         report_content += "#### Contender\n"
         if contender_report:
-            report_content += f"- [Report]({get_path_for_report(contender_report)})\n"
+            report_content += f"- [Report]({get_path_for_report(contender_report, report_dir)})\n"
         else:
             report_content += "- Report: Not available\n"
         
-        report_content += f"- [Raw Results]({get_path_for_report(contender_results)})\n\n"
+        report_content += f"- [Raw Results]({get_path_for_report(contender_results, report_dir)})\n\n"
         
         # Create comparison table
         comparison_table = create_comparison_table(
@@ -719,39 +719,61 @@ def create_comparison_report(baseline_dir, contender_dir, experiment_names=None,
         logger.error(f"Error writing report: {e}")
         return None
 
-def get_path_for_report(path):
+def get_path_for_report(path, report_dir=None):
     """Convert a path to a format suitable for inclusion in a report.
     
     Args:
         path: Path object or string to convert
+        report_dir: Optional report directory to make paths relative to
         
     Returns:
         String representation of the path suitable for a Markdown link
     """
     path_obj = Path(path)
+    path_str = str(path_obj)
     
-    # Try to make it relative to PROJECT_ROOT
+    # If report_dir is provided, calculate a true relative path
+    if report_dir:
+        try:
+            # For relative paths like 'results/...', prepend project root to make them absolute
+            if path_str.startswith('results/') or path_str.startswith('reports/'):
+                absolute_path = PROJECT_ROOT / path_str
+                relative_path = os.path.relpath(absolute_path, report_dir)
+                return relative_path
+            
+            # For already absolute paths, make them relative to the report directory
+            relative_path = os.path.relpath(path_obj, report_dir)
+            return relative_path
+        except Exception as e:
+            logger.debug(f"Error calculating relative path: {e}")
+    
+    # Fallbacks for when report_dir is not provided or relative path calculation fails
     try:
+        # Try to make it relative to project root
         return str(path_obj.relative_to(PROJECT_ROOT))
     except ValueError:
-        # If it's not a subpath, check if it's already a relative path
-        path_str = str(path_obj)
-        
-        # Fix doubled paths (e.g., reports/darwin-arm64-Apple-M3-Pro/reports/darwin-arm64-Apple-M3-Pro/...)
-        # Check for common patterns that indicate a path duplication
-        for prefix in ['reports/', 'results/']:
-            if path_str.count(prefix) > 1:
-                # Find the second occurrence and keep everything from there
-                second_occurrence = path_str.find(prefix, path_str.find(prefix) + 1)
-                if second_occurrence != -1:
-                    return path_str[second_occurrence:]
-        
-        # If the path starts with reports/ or results/, use it as is
-        if path_str.startswith('reports/') or path_str.startswith('results/'):
-            return path_str
-        
-        # Return absolute path as a last resort
-        return str(path_obj)
+        # If that fails, use aggressive cleanup
+        pass
+    
+    # Check for paths that contain duplicated segments like reports/platform/reports/platform/...
+    prefixes = ['reports/', 'results/']
+    for prefix in prefixes:
+        if path_str.count(prefix) > 1:
+            # Find second occurrence
+            first_pos = path_str.find(prefix)
+            second_pos = path_str.find(prefix, first_pos + 1)
+            
+            if second_pos != -1:
+                # Take everything from the second occurrence forward
+                clean_path = path_str[second_pos:]
+                return clean_path
+    
+    # If the path starts with reports/ or results/, use it as is
+    if path_str.startswith('reports/') or path_str.startswith('results/'):
+        return path_str
+    
+    # Return absolute path as a last resort
+    return path_str
 
 def main():
     """Main function to generate combined reports."""

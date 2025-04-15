@@ -1,6 +1,6 @@
 # Comparison Report: GCC 15.0.0 (Debug_O0) vs GCC 15.0.0 (Release_O3)
 
-Generated on: 2025-04-15 19:31:11
+Generated on: 2025-04-15 19:38:20
 
 ## Table of Contents
 
@@ -42,12 +42,12 @@ Path: `results/darwin-arm64-Apple-M3-Pro/gcc-15.0.0/Release_O3/26359d46`
 ### Original Reports and Data
 
 #### Baseline
-- [Report](reports/darwin-arm64-Apple-M3-Pro/gcc-15.0.0/Debug_O0/845f2637/int_addition/report.md)
-- [Raw Results](results/darwin-arm64-Apple-M3-Pro/gcc-15.0.0/Debug_O0/845f2637/int_addition)
+- [Report](../gcc-15.0.0/Debug_O0/845f2637/int_addition/report.md)
+- [Raw Results](../../../results/darwin-arm64-Apple-M3-Pro/gcc-15.0.0/Debug_O0/845f2637/int_addition)
 
 #### Contender
-- [Report](reports/darwin-arm64-Apple-M3-Pro/gcc-15.0.0/Release_O3/26359d46/int_addition/report.md)
-- [Raw Results](results/darwin-arm64-Apple-M3-Pro/gcc-15.0.0/Release_O3/26359d46/int_addition)
+- [Report](../gcc-15.0.0/Release_O3/26359d46/int_addition/report.md)
+- [Raw Results](../../../results/darwin-arm64-Apple-M3-Pro/gcc-15.0.0/Release_O3/26359d46/int_addition)
 
 ### Benchmark Comparison
 
@@ -76,12 +76,12 @@ Path: `results/darwin-arm64-Apple-M3-Pro/gcc-15.0.0/Release_O3/26359d46`
 ### Original Reports and Data
 
 #### Baseline
-- [Report](reports/darwin-arm64-Apple-M3-Pro/gcc-15.0.0/Debug_O0/845f2637/float_addition/report.md)
-- [Raw Results](results/darwin-arm64-Apple-M3-Pro/gcc-15.0.0/Debug_O0/845f2637/float_addition)
+- [Report](../gcc-15.0.0/Debug_O0/845f2637/float_addition/report.md)
+- [Raw Results](../../../results/darwin-arm64-Apple-M3-Pro/gcc-15.0.0/Debug_O0/845f2637/float_addition)
 
 #### Contender
-- [Report](reports/darwin-arm64-Apple-M3-Pro/gcc-15.0.0/Release_O3/26359d46/float_addition/report.md)
-- [Raw Results](results/darwin-arm64-Apple-M3-Pro/gcc-15.0.0/Release_O3/26359d46/float_addition)
+- [Report](../gcc-15.0.0/Release_O3/26359d46/float_addition/report.md)
+- [Raw Results](../../../results/darwin-arm64-Apple-M3-Pro/gcc-15.0.0/Release_O3/26359d46/float_addition)
 
 ### Benchmark Comparison
 
