@@ -1,6 +1,6 @@
 # Comparison Report: GCC 15.0.0 (Debug_O0) vs GCC 15.0.0 (Release_O3)
 
-Generated on: 2025-04-15 19:04:28
+Generated on: 2025-04-15 19:31:11
 
 ## Table of Contents
 
@@ -39,16 +39,24 @@ Path: `results/darwin-arm64-Apple-M3-Pro/gcc-15.0.0/Release_O3/26359d46`
 | **Date** | 2025-04-15T14:22:13.481128 | 2025-04-15T14:21:20.416727 |
 
 
-### Original Reports
+### Original Reports and Data
 
-- [Baseline Report](reports/darwin-arm64-Apple-M3-Pro/gcc-15.0.0/Debug_O0/845f2637/int_addition/report.md)
-- [Contender Report](reports/darwin-arm64-Apple-M3-Pro/gcc-15.0.0/Release_O3/26359d46/int_addition/report.md)
+#### Baseline
+- [Report](reports/darwin-arm64-Apple-M3-Pro/gcc-15.0.0/Debug_O0/845f2637/int_addition/report.md)
+- [Raw Results](results/darwin-arm64-Apple-M3-Pro/gcc-15.0.0/Debug_O0/845f2637/int_addition)
+
+#### Contender
+- [Report](reports/darwin-arm64-Apple-M3-Pro/gcc-15.0.0/Release_O3/26359d46/int_addition/report.md)
+- [Raw Results](results/darwin-arm64-Apple-M3-Pro/gcc-15.0.0/Release_O3/26359d46/int_addition)
 
 ### Benchmark Comparison
 
-| Benchmark | GCC 15.0.0 (Debug_O0) CPU (ns) | GCC 15.0.0 (Release_O3) CPU (ns) | Improvement (%) | GCC 15.0.0 (Debug_O0) repetitions | GCC 15.0.0 (Release_O3) repetitions | Improvement (%) | GCC 15.0.0 (Debug_O0) Time (ns) | GCC 15.0.0 (Release_O3) Time (ns) | Improvement (%) | GCC 15.0.0 (Debug_O0) Iterations | GCC 15.0.0 (Release_O3) Iterations | Improvement (%) | GCC 15.0.0 (Debug_O0) per_family_instance_index | GCC 15.0.0 (Release_O3) per_family_instance_index | Improvement (%) | GCC 15.0.0 (Debug_O0) repetition_index | GCC 15.0.0 (Release_O3) repetition_index | Improvement (%) | GCC 15.0.0 (Debug_O0) threads | GCC 15.0.0 (Release_O3) threads | Improvement (%) | GCC 15.0.0 (Debug_O0) family_index | GCC 15.0.0 (Release_O3) family_index | Improvement (%) | Winner |
-| --------- | ------------------------------ | -------------------------------- | --------------- | --------------------------------- | ----------------------------------- | --------------- | ------------------------------- | --------------------------------- | --------------- | -------------------------------- | ---------------------------------- | --------------- | ----------------------------------------------- | ------------------------------------------------- | --------------- | -------------------------------------- | ---------------------------------------- | --------------- | ----------------------------- | ------------------------------- | --------------- | ---------------------------------- | ------------------------------------ | --------------- | ------ |
-| BM_IntAddition | 2.09 | 0.28 | <span style='color:green'>86.68%</span> | 1.00 | 1.00 | <span style='color:'>0.00%</span> | 2.09 | 0.28 | <span style='color:green'>86.68%</span> | 336739210.0 | 1000000000.0 | <span style='color:green'>196.97%</span> | 0.00 | 0.00 | <span style='color:red'>∞</span> | 0.00 | 0.00 | <span style='color:red'>∞</span> | 1.00 | 1.00 | <span style='color:'>0.00%</span> | 0.00 | 0.00 | <span style='color:red'>∞</span> | GCC 15.0.0 (Release_O3) |
+| Benchmark | GCC 15.0.0 (Debug_O0) Time (ns) | GCC 15.0.0 (Release_O3) Time (ns) | Improvement (%) | GCC 15.0.0 (Debug_O0) CPU (ns) | GCC 15.0.0 (Release_O3) CPU (ns) | Improvement (%) | GCC 15.0.0 (Debug_O0) Iterations | GCC 15.0.0 (Release_O3) Iterations | Improvement (%) | GCC 15.0.0 (Debug_O0) Repetitions | GCC 15.0.0 (Release_O3) Repetitions | Improvement (%) | GCC 15.0.0 (Debug_O0) Threads | GCC 15.0.0 (Release_O3) Threads | Improvement (%) | Winner |
+| --------- | ------------------------------- | --------------------------------- | --------------- | ------------------------------ | -------------------------------- | --------------- | -------------------------------- | ---------------------------------- | --------------- | --------------------------------- | ----------------------------------- | --------------- | ----------------------------- | ------------------------------- | --------------- | ------ |
+| BM_IntAddition | 2.09 | 0.28 | <span style='color:green'>86.68%</span> | 2.09 | 0.28 | <span style='color:green'>86.68%</span> | 336739210 | 1000000000 | <span style='color:green'>196.97%</span> | 1 | 1 | <span style='color:'>0.00%</span> | 1 | 1 | <span style='color:'>0.00%</span> | GCC 15.0.0 (Release_O3) |
+
+**Note:** Google Benchmark has determined different workloads for baseline and contender, which may affect result quality:
+- **Iterations differ:** Baseline: [336739210], Contender: [1000000000]
 
 
 ## float_addition
@@ -65,15 +73,23 @@ Path: `results/darwin-arm64-Apple-M3-Pro/gcc-15.0.0/Release_O3/26359d46`
 | **Date** | 2025-04-15T14:22:16.346071 | 2025-04-15T14:21:21.903827 |
 
 
-### Original Reports
+### Original Reports and Data
 
-- [Baseline Report](reports/darwin-arm64-Apple-M3-Pro/gcc-15.0.0/Debug_O0/845f2637/float_addition/report.md)
-- [Contender Report](reports/darwin-arm64-Apple-M3-Pro/gcc-15.0.0/Release_O3/26359d46/float_addition/report.md)
+#### Baseline
+- [Report](reports/darwin-arm64-Apple-M3-Pro/gcc-15.0.0/Debug_O0/845f2637/float_addition/report.md)
+- [Raw Results](results/darwin-arm64-Apple-M3-Pro/gcc-15.0.0/Debug_O0/845f2637/float_addition)
+
+#### Contender
+- [Report](reports/darwin-arm64-Apple-M3-Pro/gcc-15.0.0/Release_O3/26359d46/float_addition/report.md)
+- [Raw Results](results/darwin-arm64-Apple-M3-Pro/gcc-15.0.0/Release_O3/26359d46/float_addition)
 
 ### Benchmark Comparison
 
-| Benchmark | GCC 15.0.0 (Debug_O0) CPU (ns) | GCC 15.0.0 (Release_O3) CPU (ns) | Improvement (%) | GCC 15.0.0 (Debug_O0) repetitions | GCC 15.0.0 (Release_O3) repetitions | Improvement (%) | GCC 15.0.0 (Debug_O0) Time (ns) | GCC 15.0.0 (Release_O3) Time (ns) | Improvement (%) | GCC 15.0.0 (Debug_O0) Iterations | GCC 15.0.0 (Release_O3) Iterations | Improvement (%) | GCC 15.0.0 (Debug_O0) per_family_instance_index | GCC 15.0.0 (Release_O3) per_family_instance_index | Improvement (%) | GCC 15.0.0 (Debug_O0) repetition_index | GCC 15.0.0 (Release_O3) repetition_index | Improvement (%) | GCC 15.0.0 (Debug_O0) threads | GCC 15.0.0 (Release_O3) threads | Improvement (%) | GCC 15.0.0 (Debug_O0) family_index | GCC 15.0.0 (Release_O3) family_index | Improvement (%) | Winner |
-| --------- | ------------------------------ | -------------------------------- | --------------- | --------------------------------- | ----------------------------------- | --------------- | ------------------------------- | --------------------------------- | --------------- | -------------------------------- | ---------------------------------- | --------------- | ----------------------------------------------- | ------------------------------------------------- | --------------- | -------------------------------------- | ---------------------------------------- | --------------- | ----------------------------- | ------------------------------- | --------------- | ---------------------------------- | ------------------------------------ | --------------- | ------ |
-| BM_FloatAddition | 2.05 | 0.27 | <span style='color:green'>86.63%</span> | 1.00 | 1.00 | <span style='color:'>0.00%</span> | 2.05 | 0.27 | <span style='color:green'>86.63%</span> | 336031184.0 | 1000000000.0 | <span style='color:green'>197.59%</span> | 0.00 | 0.00 | <span style='color:red'>∞</span> | 0.00 | 0.00 | <span style='color:red'>∞</span> | 1.00 | 1.00 | <span style='color:'>0.00%</span> | 0.00 | 0.00 | <span style='color:red'>∞</span> | GCC 15.0.0 (Release_O3) |
+| Benchmark | GCC 15.0.0 (Debug_O0) Time (ns) | GCC 15.0.0 (Release_O3) Time (ns) | Improvement (%) | GCC 15.0.0 (Debug_O0) CPU (ns) | GCC 15.0.0 (Release_O3) CPU (ns) | Improvement (%) | GCC 15.0.0 (Debug_O0) Iterations | GCC 15.0.0 (Release_O3) Iterations | Improvement (%) | GCC 15.0.0 (Debug_O0) Repetitions | GCC 15.0.0 (Release_O3) Repetitions | Improvement (%) | GCC 15.0.0 (Debug_O0) Threads | GCC 15.0.0 (Release_O3) Threads | Improvement (%) | Winner |
+| --------- | ------------------------------- | --------------------------------- | --------------- | ------------------------------ | -------------------------------- | --------------- | -------------------------------- | ---------------------------------- | --------------- | --------------------------------- | ----------------------------------- | --------------- | ----------------------------- | ------------------------------- | --------------- | ------ |
+| BM_FloatAddition | 2.05 | 0.27 | <span style='color:green'>86.63%</span> | 2.05 | 0.27 | <span style='color:green'>86.63%</span> | 336031184 | 1000000000 | <span style='color:green'>197.59%</span> | 1 | 1 | <span style='color:'>0.00%</span> | 1 | 1 | <span style='color:'>0.00%</span> | GCC 15.0.0 (Release_O3) |
+
+**Note:** Google Benchmark has determined different workloads for baseline and contender, which may affect result quality:
+- **Iterations differ:** Baseline: [336031184], Contender: [1000000000]
 
 

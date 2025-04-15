@@ -260,11 +260,18 @@ def create_benchmark_table(benchmark_results):
     if not benchmark_results:
         return "[No benchmark results available]"
     
+    # Define non-essential fields to exclude
+    excluded_fields = {
+        "repetition_index", "family_index", "per_family_instance_index", 
+        "run_name", "run_type", "aggregate_name", "label"
+    }
+    
     # Get all metrics from the first benchmark to determine table columns
     columns = {}
     if benchmark_results.get('benchmarks') and len(benchmark_results['benchmarks']) > 0:
         first_benchmark = benchmark_results['benchmarks'][0]
-        # Filter out non-numeric values or complex structures and map to user-friendly names
+        
+        # Map user-friendly names for common fields
         column_mapping = {
             "name": "Benchmark",
             "real_time": "Time (ns)",
@@ -277,7 +284,6 @@ def create_benchmark_table(benchmark_results):
             "cpu_cv": "CPU CV (%)",
             "items_per_second": "Items/Second",
             "bytes_per_second": "Bytes/Second"
-            # Add any other metrics you want to display with user-friendly names
         }
         
         # Add core columns first in a specific order
@@ -286,12 +292,13 @@ def create_benchmark_table(benchmark_results):
             if key in first_benchmark:
                 columns[key] = column_mapping.get(key, key)
         
-        # Then add any other numeric columns
+        # Then add all other metrics (including user-defined ones), except excluded fields
         for key, value in first_benchmark.items():
-            if key not in core_columns and (isinstance(value, (int, float, bool)) or 
-                                           (isinstance(value, str) and value.replace('.', '', 1).isdigit())):
-                if key in column_mapping:
-                    columns[key] = column_mapping.get(key, key)
+            if (key not in core_columns and 
+                key not in excluded_fields and 
+                (isinstance(value, (int, float, bool)) or 
+                (isinstance(value, str) and value.replace('.', '', 1).isdigit()))):
+                columns[key] = column_mapping.get(key, key)
     
     # If no valid columns found, use defaults
     if not columns:

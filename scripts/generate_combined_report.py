@@ -125,6 +125,12 @@ def identify_common_metrics(baseline_data, contender_data):
     if not baseline_data or not contender_data:
         return set()
     
+    # Define non-essential fields to exclude
+    excluded_fields = {
+        "repetition_index", "family_index", "per_family_instance_index", 
+        "run_name", "run_type", "aggregate_name", "label"
+    }
+    
     baseline_metrics = set()
     contender_metrics = set()
     
@@ -132,14 +138,18 @@ def identify_common_metrics(baseline_data, contender_data):
     if 'benchmarks' in baseline_data and baseline_data['benchmarks']:
         first_benchmark = baseline_data['benchmarks'][0]
         for key, value in first_benchmark.items():
-            if isinstance(value, (int, float)) or (isinstance(value, str) and value.replace('.', '', 1).isdigit()):
+            if (key not in excluded_fields and 
+                (isinstance(value, (int, float, bool)) or 
+                 (isinstance(value, str) and value.replace('.', '', 1).isdigit()))):
                 baseline_metrics.add(key)
     
     # Get metrics from first benchmark in contender
     if 'benchmarks' in contender_data and contender_data['benchmarks']:
         first_benchmark = contender_data['benchmarks'][0]
         for key, value in first_benchmark.items():
-            if isinstance(value, (int, float)) or (isinstance(value, str) and value.replace('.', '', 1).isdigit()):
+            if (key not in excluded_fields and 
+                (isinstance(value, (int, float, bool)) or 
+                 (isinstance(value, str) and value.replace('.', '', 1).isdigit()))):
                 contender_metrics.add(key)
     
     # Return intersection of metrics
@@ -201,19 +211,39 @@ def create_comparison_table(baseline_data, contender_data, baseline_label, conte
         'real_time': 'Time (ns)',
         'cpu_time': 'CPU (ns)',
         'iterations': 'Iterations',
+        'threads': 'Threads',
+        'time_unit': 'Time Unit',
+        'repetitions': 'Repetitions',
+        'time_cv': 'Time CV (%)',
+        'cpu_cv': 'CPU CV (%)',
         'items_per_second': 'Items/Second',
-        'bytes_per_second': 'Bytes/Second',
-        'time_unit': 'Time Unit'
+        'bytes_per_second': 'Bytes/Second'
     }
     
     # Create table headers
     headers = ['Benchmark']
-    for metric in common_metrics:
-        if metric == 'name':
-            continue
-        headers.append(f"{baseline_label} {metric_display.get(metric, metric)}")
-        headers.append(f"{contender_label} {metric_display.get(metric, metric)}")
+    
+    # Order metrics with core metrics first 
+    ordered_metrics = []
+    core_metrics = ['real_time', 'cpu_time', 'iterations']
+    
+    # Add core metrics first
+    for metric in core_metrics:
+        if metric in common_metrics:
+            ordered_metrics.append(metric)
+    
+    # Add remaining metrics
+    for metric in sorted(common_metrics):
+        if metric != 'name' and metric not in core_metrics:
+            ordered_metrics.append(metric)
+    
+    # Build headers for each metric
+    for metric in ordered_metrics:
+        display_name = metric_display.get(metric, metric)
+        headers.append(f"{baseline_label} {display_name}")
+        headers.append(f"{contender_label} {display_name}")
         headers.append(f"Improvement (%)")
+    
     headers.append("Winner")
     
     # Create header row
@@ -236,47 +266,55 @@ def create_comparison_table(baseline_data, contender_data, baseline_label, conte
         best_improvement = -float('inf')  # Track best improvement for winner
         worst_regression = float('inf')   # Track worst regression
         
-        for metric in common_metrics:
-            if metric == 'name':
-                continue
+        # Process metrics in order
+        for metric in ordered_metrics:
+            baseline_value = baseline_bench.get(metric, 0)
+            contender_value = contender_bench.get(metric, 0)
+            
+            # Convert to float for calculation if possible
+            try:
+                baseline_float = float(baseline_value)
+                contender_float = float(contender_value)
                 
-            baseline_value = float(baseline_bench.get(metric, 0))
-            contender_value = float(contender_bench.get(metric, 0))
-            
-            # Calculate improvement
-            improvement = calculate_improvement(baseline_value, contender_value, metric)
-            
-            # Track best improvement / worst regression
-            if improvement > 0 and improvement > best_improvement:
-                best_improvement = improvement
-            elif improvement < 0 and improvement < worst_regression:
-                worst_regression = improvement
-            
-            # Format values for table
-            if isinstance(baseline_value, (int, float)) and metric not in ['iterations']:
-                row.append(f"{baseline_value:.2f}")
-            else:
-                row.append(f"{baseline_value}")
+                # Calculate improvement
+                improvement = calculate_improvement(baseline_float, contender_float, metric)
                 
-            if isinstance(contender_value, (int, float)) and metric not in ['iterations']:
-                row.append(f"{contender_value:.2f}")
-            else:
-                row.append(f"{contender_value}")
-            
-            # Format improvement
-            if math.isfinite(improvement):
-                color = ""
-                if improvement > 0:
-                    color = "green"
-                elif improvement < 0:
-                    color = "red"
+                # Track best improvement / worst regression
+                if improvement > 0 and improvement > best_improvement:
+                    best_improvement = improvement
+                elif improvement < 0 and improvement < worst_regression:
+                    worst_regression = improvement
                 
-                row.append(f"<span style='color:{color}'>{improvement:.2f}%</span>")
-            else:
-                if improvement > 0:
-                    row.append("<span style='color:green'>∞</span>")
+                # Format values for table
+                if isinstance(baseline_value, (int, float)) and metric not in ["iterations", "threads", "repetitions"]:
+                    row.append(f"{baseline_float:.2f}")
                 else:
-                    row.append("<span style='color:red'>∞</span>")
+                    row.append(f"{baseline_value}")
+                    
+                if isinstance(contender_value, (int, float)) and metric not in ["iterations", "threads", "repetitions"]:
+                    row.append(f"{contender_float:.2f}")
+                else:
+                    row.append(f"{contender_value}")
+                
+                # Format improvement
+                if math.isfinite(improvement):
+                    color = ""
+                    if improvement > 0:
+                        color = "green"
+                    elif improvement < 0:
+                        color = "red"
+                    
+                    row.append(f"<span style='color:{color}'>{improvement:.2f}%</span>")
+                else:
+                    if improvement > 0:
+                        row.append("<span style='color:green'>∞</span>")
+                    else:
+                        row.append("<span style='color:red'>∞</span>")
+            except (ValueError, TypeError):
+                # Handle non-numeric values
+                row.append(f"{baseline_value}")
+                row.append(f"{contender_value}")
+                row.append("N/A")
         
         # Determine overall winner based on best improvement or worst regression
         winner = "tie"
@@ -289,6 +327,31 @@ def create_comparison_table(baseline_data, contender_data, baseline_label, conte
         
         # Add row to table
         table += "| " + " | ".join(row) + " |\n"
+    
+    # Check if iterations or repetitions differ between baseline and contender
+    warnings = []
+    
+    # Check iterations differ
+    if 'iterations' in common_metrics:
+        baseline_iterations = set(int(b.get('iterations', 0)) for b in baseline_data.get('benchmarks', []))
+        contender_iterations = set(int(b.get('iterations', 0)) for b in contender_data.get('benchmarks', []))
+        
+        if baseline_iterations != contender_iterations:
+            warnings.append(f"**Iterations differ:** Baseline: {sorted(baseline_iterations)}, Contender: {sorted(contender_iterations)}")
+    
+    # Check if repetitions differ
+    if 'repetitions' in common_metrics:
+        baseline_repetitions = set(int(b.get('repetitions', 1)) for b in baseline_data.get('benchmarks', []))
+        contender_repetitions = set(int(b.get('repetitions', 1)) for b in contender_data.get('benchmarks', []))
+        
+        if baseline_repetitions != contender_repetitions:
+            warnings.append(f"**Repetitions differ:** Baseline: {sorted(baseline_repetitions)}, Contender: {sorted(contender_repetitions)}")
+    
+    # Add warnings if any
+    if warnings:
+        table += "\n**Note:** Google Benchmark has determined different workloads for baseline and contender, which may affect result quality:\n"
+        for warning in warnings:
+            table += f"- {warning}\n"
     
     return table
 
@@ -387,6 +450,19 @@ def get_original_report_path(results_dir, experiment_name):
         return report_path
     
     return None
+
+def get_results_dir_link(results_dir, experiment_name):
+    """Get the path to the original results directory for a specific experiment.
+    
+    Args:
+        results_dir: Path to the baseline or contender result directory (root of all experiments)
+        experiment_name: Name of the experiment
+        
+    Returns:
+        Path to the results directory for the experiment
+    """
+    # This will always return a path, even if it doesn't exist
+    return results_dir / experiment_name
 
 def create_metadata_comparison_table(baseline_metadata, contender_metadata):
     """Create a table comparing key metadata between baseline and contender.
@@ -550,22 +626,31 @@ def create_comparison_report(baseline_dir, contender_dir, experiment_names=None,
             metadata_comparison = create_metadata_comparison_table(baseline_metadata, contender_metadata)
             report_content += metadata_comparison + "\n\n"
         
-        # Add links to original reports
-        report_content += "### Original Reports\n\n"
+        # Add links to original reports and result directories
+        report_content += "### Original Reports and Data\n\n"
+        
+        # Get report and results paths
         baseline_report = get_original_report_path(baseline_dir, experiment_name)
         contender_report = get_original_report_path(contender_dir, experiment_name)
+        baseline_results = get_results_dir_link(baseline_dir, experiment_name)
+        contender_results = get_results_dir_link(contender_dir, experiment_name)
         
+        # Add links to reports and results
+        report_content += "#### Baseline\n"
         if baseline_report:
-            report_content += f"- [Baseline Report]({baseline_report.relative_to(PROJECT_ROOT)})\n"
+            report_content += f"- [Report]({get_path_for_report(baseline_report)})\n"
         else:
-            report_content += "- Baseline Report: Not available\n"
-            
-        if contender_report:
-            report_content += f"- [Contender Report]({contender_report.relative_to(PROJECT_ROOT)})\n"
-        else:
-            report_content += "- Contender Report: Not available\n"
+            report_content += "- Report: Not available\n"
         
-        report_content += "\n"
+        report_content += f"- [Raw Results]({get_path_for_report(baseline_results)})\n\n"
+        
+        report_content += "#### Contender\n"
+        if contender_report:
+            report_content += f"- [Report]({get_path_for_report(contender_report)})\n"
+        else:
+            report_content += "- Report: Not available\n"
+        
+        report_content += f"- [Raw Results]({get_path_for_report(contender_results)})\n\n"
         
         # Create comparison table
         comparison_table = create_comparison_table(
@@ -633,6 +718,40 @@ def create_comparison_report(baseline_dir, contender_dir, experiment_names=None,
     except Exception as e:
         logger.error(f"Error writing report: {e}")
         return None
+
+def get_path_for_report(path):
+    """Convert a path to a format suitable for inclusion in a report.
+    
+    Args:
+        path: Path object or string to convert
+        
+    Returns:
+        String representation of the path suitable for a Markdown link
+    """
+    path_obj = Path(path)
+    
+    # Try to make it relative to PROJECT_ROOT
+    try:
+        return str(path_obj.relative_to(PROJECT_ROOT))
+    except ValueError:
+        # If it's not a subpath, check if it's already a relative path
+        path_str = str(path_obj)
+        
+        # Fix doubled paths (e.g., reports/darwin-arm64-Apple-M3-Pro/reports/darwin-arm64-Apple-M3-Pro/...)
+        # Check for common patterns that indicate a path duplication
+        for prefix in ['reports/', 'results/']:
+            if path_str.count(prefix) > 1:
+                # Find the second occurrence and keep everything from there
+                second_occurrence = path_str.find(prefix, path_str.find(prefix) + 1)
+                if second_occurrence != -1:
+                    return path_str[second_occurrence:]
+        
+        # If the path starts with reports/ or results/, use it as is
+        if path_str.startswith('reports/') or path_str.startswith('results/'):
+            return path_str
+        
+        # Return absolute path as a last resort
+        return str(path_obj)
 
 def main():
     """Main function to generate combined reports."""
