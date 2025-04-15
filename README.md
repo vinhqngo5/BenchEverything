@@ -40,6 +40,11 @@
    * [8.1. Adding a New Profiler](#81-adding-a-new-profiler)
    * [8.2. Adding Custom Analysis/Plots](#82-adding-custom-analysisplots)
    * [8.3. Supporting New Platforms](#83-supporting-new-platforms)
+* [9. Future Considerations](#9-future-considerations)
+   * [9.1. Godbolt Integration](#91-godbolt-integration)
+   * [9.2. Planned Enhancements](#92-planned-enhancements)
+   * [9.3. Contributing](#93-contributing)
+* [Appendix A: Troubleshooting](#appendix-a-troubleshooting)
 
 ---
 
@@ -47,7 +52,14 @@
 
 ### 1.1. Goal
 
-To provide a structured C++ benchmarking repository using Google Benchmark and CMake. It facilitates running experiments across various configurations (platforms, compilers, flags), collecting detailed performance data (benchmark timings, perf counters, assembly), and generating comparative reports.
+BenchEverything automates C++ microbenchmarking tasks that developers typically need to perform repeatedly, providing a structured framework with:
+
+1. **Standardized Benchmarking**: Run consistent benchmarks across different compilers, platforms, and configurations
+2. **Comprehensive Data Collection**: Gather timings, performance counters, and assembly code in one place
+3. **Automated Reporting**: Generate visual reports with minimal effort
+4. **Cross-Configuration Comparison**: Easily compare performance across compilers, flags, and platforms
+
+A core objective is also to help **demystify performance assumptions** that may no longer hold true on modern compilers and CPUs. By making it easy to test the same code across multiple configurations, BenchEverything helps reveal optimization behaviors that might be counter-intuitive or have changed over time.
 
 ### 1.2. Core Philosophy
 
@@ -59,6 +71,21 @@ To provide a structured C++ benchmarking repository using Google Benchmark and C
 ---
 
 ## 2. Core Concepts
+
+BenchEverything follows a 3-step workflow:
+
+```
+┌─────────────────┐      ┌─────────────────┐      ┌─────────────────┐
+│  1. CREATE      │      │  2. RUN         │      │  3. REPORT      │
+│  EXPERIMENT     │─────>│  BENCHMARKS     │─────>│  GENERATION     │
+└─────────────────┘      └─────────────────┘      └─────────────────┘
+   * Create dir         * Configure build        * Process templates
+   * Write code         * Build experiments      * Run pre_report.py
+   * Define CMake       * Run benchmarks         * Generate visuals
+   * Add to config      * Collect data           * Compare results
+```
+
+Key components in this workflow:
 
 *   **Experiment:** A specific piece of code being benchmarked, located under `experiments/<experiment_name>/`. Contains C++ source(s), its own `CMakeLists.txt`, a report template (`README.md.template`), and optional configuration overrides (`exp_config.json`) and pre-report analysis scripts (`pre_report.py`).
 *   **Configuration:** A unique combination defining the build and runtime environment. Key elements:
@@ -165,6 +192,50 @@ The hash is generated from a combination of:
 - Other relevant metadata
 
 For details on how this hash is calculated, see [`generate_metadata_hash()`](scripts/run_benchmarks.py) in the source code.
+
+### Understanding the Metadata Hash
+
+The metadata hash is a critical component of BenchEverything's organization system that enables reproducibility and traceability. Here's a detailed explanation:
+
+#### What is the Metadata Hash?
+
+The metadata hash is a short (8-character) identifier that uniquely represents a specific benchmark environment, including:
+- Hardware details (CPU model, architecture)
+- Software details (OS, compiler version)
+- Build configuration (optimization flags, build type)
+
+#### How is it Generated?
+
+1. The system collects relevant environment data:
+   ```python
+   metadata = {
+       "system": "darwin",           # Operating system
+       "machine": "arm64",           # CPU architecture
+       "cpu": "Apple-M3-Pro",        # CPU model
+       "compiler_name": "clang",     # Compiler name
+       "compiler_version": "20.1.2", # Compiler version
+       "build_flags_id": "Release_O3" # Build flags
+   }
+   ```
+
+2. The values are combined into a standardized string:
+   ```
+   "build_flags_id=Release_O3:compiler_name=clang:compiler_version=20.1.2:cpu=Apple-M3-Pro:machine=arm64:system=darwin"
+   ```
+
+3. An MD5 hash is generated and truncated to 8 characters:
+   ```
+   0528a2c3
+   ```
+
+#### Why is it Important?
+
+1. **Reproducibility**: The hash ensures each result is uniquely identified by its environment
+2. **Directory Organization**: Results are stored in directories named by the hash
+3. **Linkage**: The hash connects build artifacts, results, and reports
+4. **Verification**: Confirms that results came from a specific environment
+
+For detailed implementation, see the [`generate_metadata_hash()`](scripts/run_benchmarks.py) function.
 
 ---
 
@@ -656,7 +727,7 @@ build/<detailed_platform_id>/<detailed_compiler_id>/<build_flags_id>/
 
 Where:
 - `detailed_platform_id`: Includes OS, CPU architecture, and CPU model (e.g., `darwin-arm64-Apple-M3-Pro`)
-- `detailed_compiler_id`: Includes compiler name and version (e.g., `clang-15.0.0`)
+- `detailed_compiler_id`: Includes compiler name and version (e.g., `clang-20.1.2`)
 - `build_flags_id`: Optimization level and other compiler flags (e.g., `Release_O3`)
 
 ### 6.4. Toolchain Files
@@ -1005,7 +1076,7 @@ The project is designed to be extended:
 ### 8.2. Adding Custom Analysis/Plots
 
 1.  Create/edit the `experiments/<experiment_name>/pre_report.py` script. (For single-run analysis/plots)
-2.  Add Python dependencies (e.g., `matplotlib`, `pandas`, `numpy`) to `scripts/requirements.txt` and install them (`pip install -r scripts/requirements.txt`).
+2.  Add Python dependencies (e.g., `matplotlib`, `pandas`, `numpy`) to `scripts/requirements.txt` and install them (`pip install -r scripts/requirements.txt`). Consider using a virtual environment (`python -m venv .venv && source .venv/bin/activate`).
 3.  Implement the analysis logic in `pre_report.py` to read data from the `--results-dir` and save generated files (plots, CSVs) to the `--output-dir` using predictable names.
 4.  Use corresponding pattern placeholders (`{{FIGURES:*.png}}`, `{{ASSETS:*.csv}}`) in the `experiments/<exp_name>/README.md.template`.
 5.  **(Optional) Modify `generate_combined_report.py`:** If you need analysis or plots that compare *multiple* runs (e.g., plotting performance trends across commits or compilers), implement this logic directly within `generate_combined_report.py`. This script would read data from multiple result directories, perform the analysis, save combined plots/assets (likely to `reports/comparisons/assets/`), and populate placeholders in the summary/comparison templates.
@@ -1022,82 +1093,79 @@ The project is designed to be extended:
 
 ---
 
-## 9. Usage
+## 9. Future Considerations
 
-### 9.1. Prerequisites
+### 9.1. Godbolt Integration
 
-*   **Git:** For version control.
-*   **CMake:** Recent version (e.g., 3.15+).
-*   **C++ Compiler:** Supported compiler (GCC, Clang, MSVC) installed and findable.
-*   **Python:** Python 3.6+.
-*   **Python Packages:** Install dependencies: `pip install -r scripts/requirements.txt`. Consider using a virtual environment (`python -m venv .venv && source .venv/bin/activate`).
-*   **Performance Tools:** `perf` (Linux `linux-tools-common` package or similar). Other platform-specific tools if added.
-*   **Build Tools:** `make`, `ninja`, or Visual Studio Build Tools depending on CMake generator.
+For manual integration with Godbolt Compiler Explorer:
 
-### 9.2. Basic Steps (Quickstart)
+1. Copy your benchmark code to [Godbolt](https://godbolt.org/)
+2. Select the same compiler and version used in your benchmark run
+3. Add the Google Benchmark library
+4. Set the same compiler flags used in your benchmark
 
-1.  **Clone:** `git clone <repo_url> BenchEverything`
-2.  **Install Dependencies:** 
-    ```bash
-    cd BenchEverything
-    pip install -r scripts/requirements.txt
-    ```
-    For virtual environment: `python -m venv .venv && source .venv/bin/activate` (recommended)
+Example workflow:
+```markdown
+## View on Godbolt
 
-3.  **Add or Use Experiments:** 
-    - **Use existing experiments:** Skip directly to configuration (step 4) if you want to run existing benchmarks
-    - **Add your own:** Follow [Section 5.1](#51-experiment-structure) to create a new experiment
-    - **View available experiments:** Check the `experiments/` directory to see what's already there
-    - All experiments are automatically detected - benchmark functions are found through Google Benchmark's `--benchmark_list_tests` feature
+To explore this code on Godbolt Compiler Explorer:
 
-4.  **Configure Your Run:** 
-    - **Default configuration:** Use `python scripts/run_benchmarks.py` to run all experiments with default settings
-    - **View current config:** Examine `scripts/config/benchmark_config.json` to understand available compilers and build flags
-    - **Customize:** Edit the config file or specify options on command line:
-      ```bash
-      python scripts/run_benchmarks.py --experiments exp1,exp2 --configs gcc_release,clang_debug
-      ```
-    - See [Section 6](#6-running-benchmarks-run_benchmarkspy) for complete configuration details
+1. Go to [Godbolt](https://godbolt.org/)
+2. Select compiler: {{METADATA:compiler_id}} {{METADATA:compiler_version}}
+3. Add Google Benchmark library: "Libraries" → Add → "benchmark"
+4. Set compiler flags: {{METADATA:config.cxx_flags_used}}
+5. Copy the benchmark code below:
 
-5.  **Run Benchmarks:** 
-    ```bash
-    python scripts/run_benchmarks.py [options]
-    ```
-    Common options:
-    - `--force`: Overwrite existing results
-    - `--incremental-build`: Skip clean build step
-    - `--experiments <name1>,<name2>`: Run specific experiments
-    - See [Section 6.1](#61-command-line-options) for the complete workflow
+```cpp
+// Paste benchmark code here
+```
 
-6.  **Generate Individual Reports:** 
-    ```bash
-    python scripts/generate_report.py --result-dir <path_to_specific_result>
-    ```
-    Refer to [Section 7.1](#71-single-report-generation-generate_reportpy) for report customization
+Automated integration through report templates is planned for a future update.
 
-7.  **Generate Combined Reports:** 
-    ```bash
-    python scripts/generate_combined_report.py --type comparison --compare-configs gcc,clang
-    ```
-    See [Section 7.2](#72-combined-report-generation-generate_combined_reportpy) for comparison options
+### 9.2. Planned Enhancements
 
-8.  **Commit Results & Reports:** 
-    ```bash
-    git add results/ reports/ && git commit -m "Run benchmarks for config X and generate reports"
-    ```
-    This preserves benchmark results for [cross-machine comparisons](#45-cross-machine-workflow)
 
-### 9.3. Benchmarking Tips
+### 9.3. Contributing
 
-*   **Quiet System:** Run on a machine with minimal background activity.
-*   **Stable Frequency:** Disable CPU frequency scaling or set the CPU governor to `performance` (Linux). `run_benchmarks.py` could potentially include checks/warnings for this.
-*   **Thermals:** Be aware of thermal throttling on long runs. Monitor temperatures if necessary.
-*   **Repetitions:** Use sufficient repetitions in Google Benchmark (`--benchmark_repetitions=N`) to get stable results.
-*   **Isolate:** Benchmark small, focused pieces of code where possible.
+Contributions to BenchEverything are welcome! Here are some ways to contribute:
+
+1. **Add New Experiments**: Create benchmarks for interesting C++ performance questions
+2. **Improve Documentation**: Clarify instructions, add examples, fix errors
+3. **Enhance Scripts**: Add features, fix bugs, improve performance
+4. **Add Visualizations**: Create better ways to visualize benchmark results
+5. **Report Issues**: Submit bug reports and feature requests
+
+Please follow the standard GitHub workflow:
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
 
 ---
 
-## 10. Future Considerations
+## Appendix A: Troubleshooting
+
+Here are solutions to common issues:
+
+### Build Problems
+
+- **CMake Not Finding Compiler**: Make sure your compiler is in PATH or specify the full path in the toolchain file
+- **Google Benchmark Not Found**: Check that FetchContent is working correctly
+- **Build Fails**: Try a clean build with `--force` and no `--incremental-build`
+
+### Running Benchmarks
+
+- **Benchmark Not Found**: Verify the experiment name is correctly specified in `benchmark_config.json`
+- **Function Names Not Detected**: Make sure benchmark functions are prefixed with `BM_`
+- **Inconsistent Results**: Run on a quiet system with stable frequency
+
+### Generating Reports
+
+- **Missing Placeholders**: Check that placeholder names match expected patterns
+- **Pre-Report Script Errors**: Ensure Python dependencies are installed
+- **Empty Reports**: Verify that benchmark results exist and are valid
+
+For more help, check the repository issues or create a new issue.
 
 
 
