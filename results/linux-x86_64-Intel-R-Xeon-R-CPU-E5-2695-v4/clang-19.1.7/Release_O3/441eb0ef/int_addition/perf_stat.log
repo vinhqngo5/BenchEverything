@@ -1,0 +1,16 @@
+# started on Tue Apr 15 14:32:50 2025
+
+
+ Performance counter stats for '/home/vinh/Q22025/BenchEverything/build/linux-x86_64-Intel-R-Xeon-R-CPU-E5-2695-v4/clang-19.1.7/Release_O3/experiments/int_addition/int_addition_benchmark --benchmark_format=json --benchmark_out=/home/vinh/Q22025/BenchEverything/results/linux-x86_64-Intel-R-Xeon-R-CPU-E5-2695-v4/clang-19.1.7/Release_O3/441eb0ef/int_addition/benchmark_output.json':
+
+     1,123,240,575      cycles                                                                
+     3,349,927,835      instructions                     #    2.98  insn per cycle            
+     1,114,805,927      branch-instructions                                                   
+            57,130      branch-misses                    #    0.01% of all branches           
+
+       0.437166326 seconds time elapsed
+
+       0.433179000 seconds user
+       0.004001000 seconds sys
+
+
