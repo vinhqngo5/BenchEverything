@@ -281,7 +281,15 @@ def build_benchmark(compiler_config, build_flags_id="Release_O3", incremental=Fa
     os.makedirs(build_dir, exist_ok=True)
     
     # Determine CMake build type and flags
-    cmake_build_type = "Release" if "Release" in build_flags_id else "Debug"
+    if "RelWithDebInfo" in build_flags_id:
+        cmake_build_type = "RelWithDebInfo"
+    elif "Release" in build_flags_id:
+        cmake_build_type = "Release"
+    elif "Debug" in build_flags_id:
+        cmake_build_type = "Debug"
+    else:
+        cmake_build_type = "Release"  # Default to Release
+    
     cxx_flags = "-std=c++20"
     
     if "O3" in build_flags_id:
@@ -295,7 +303,7 @@ def build_benchmark(compiler_config, build_flags_id="Release_O3", incremental=Fa
     
     if "native" in build_flags_id:
         cxx_flags += " -march=native"
-    
+
     # Run CMake configure
     cmake_cmd = [
         "cmake", "-S", str(PROJECT_ROOT), 
@@ -354,7 +362,7 @@ def create_metadata(experiment, compiler_config, build_flags_id, cxx_flags, cmak
     
     return metadata
 
-def extract_assembly(build_dir, experiment, output_dir):
+def extract_assembly(build_dir, experiment, output_dir, build_flags_id="Release_O3"):
     """Extract assembly for benchmark functions with source code mapping."""
     logger.info(f"Extracting assembly for {experiment['name']}...")
     
@@ -366,6 +374,45 @@ def extract_assembly(build_dir, experiment, output_dir):
     benchmark_exe = build_dir / "experiments" / experiment['name'] / experiment['benchmark_executable']
     
     # First, try to get list of benchmark functions
+    benchmark_functions = _get_benchmark_functions(benchmark_exe, experiment)
+    
+    if not benchmark_functions:
+        logger.warning(f"No benchmark functions found for {experiment['name']}")
+        return
+    
+    # Get source files
+    source_files = _get_source_files(experiment)
+    
+    # Check build type
+    is_macos = platform.system() == 'Darwin'
+    has_debug_info = "Debug" in build_flags_id or "RelWithDebInfo" in build_flags_id
+    
+    try:
+        if has_debug_info:
+            # Try to extract assembly with source interleaving for builds with debug info
+            if is_macos:
+                # For macOS Debug or RelWithDebInfo builds, run dsymutil first
+                _run_dsymutil(benchmark_exe)
+            
+            # Try to extract assembly with objdump and debug info
+            success = _extract_with_objdump(benchmark_exe, benchmark_functions, assembly_dir, True)
+            
+            if not success:
+                logger.info("Objdump extraction with debug info failed, falling back to manual extraction")
+                manual_extraction(benchmark_exe, benchmark_functions, source_files, assembly_dir)
+        else:
+            # For Release builds without debug info, use manual extraction
+            logger.info("Release build without debug info, using manual assembly extraction")
+            manual_extraction(benchmark_exe, benchmark_functions, source_files, assembly_dir)
+            
+    except Exception as e:
+        logger.warning(f"Error extracting assembly: {e}")
+        # Fall back to manual extraction as last resort
+        logger.info("Using manual assembly extraction as fallback")
+        manual_extraction(benchmark_exe, benchmark_functions, source_files, assembly_dir)
+
+def _get_benchmark_functions(benchmark_exe, experiment):
+    """Get list of benchmark functions."""
     try:
         # Run the benchmark with --benchmark_list_tests
         list_cmd = [str(benchmark_exe), "--benchmark_list_tests=true"]
@@ -374,24 +421,23 @@ def extract_assembly(build_dir, experiment, output_dir):
         
         # If no functions found this way, use default functions based on experiment
         if not benchmark_functions:
-            if experiment['name'] == "int_addition":
-                benchmark_functions = ["BM_IntAddition"]
-            elif experiment['name'] == "float_addition":
-                benchmark_functions = ["BM_FloatAddition"]
+            benchmark_functions = _get_default_benchmark_functions(experiment)
+        return benchmark_functions
     except subprocess.SubprocessError:
         # Fallback to default function names
-        if experiment['name'] == "int_addition":
-            benchmark_functions = ["BM_IntAddition"]
-        elif experiment['name'] == "float_addition":
-            benchmark_functions = ["BM_FloatAddition"]
-        else:
-            benchmark_functions = []
-    
-    if not benchmark_functions:
-        logger.warning(f"No benchmark functions found for {experiment['name']}")
-        return
-    
-    # Get source files
+        return _get_default_benchmark_functions(experiment)
+
+def _get_default_benchmark_functions(experiment):
+    """Get default benchmark function names based on experiment type."""
+    if experiment['name'] == "int_addition":
+        return ["BM_IntAddition"]
+    elif experiment['name'] == "float_addition":
+        return ["BM_FloatAddition"]
+    else:
+        return []
+
+def _get_source_files(experiment):
+    """Get source files for the experiment."""
     source_files = {}
     source_dir = PROJECT_ROOT / "experiments" / experiment['name'] / "src"
     for source_file in source_dir.glob("**/*.cpp"):
@@ -400,160 +446,77 @@ def extract_assembly(build_dir, experiment, output_dir):
                 source_files[source_file.name] = f.read()
         except Exception as e:
             logger.warning(f"Could not read source file {source_file}: {e}")
-    
-    # Platform specific assembly extraction
-    is_macos = sys.platform == 'darwin'
-    
-    if is_macos:
-        # macOS specific approach - try llvm-objdump first which handles source better on macOS
-        try:
-            # Try to use llvm-objdump if available (better support for source+asm on macOS)
-            llvm_objdump_cmd = ["llvm-objdump", "-d", "--no-show-raw-insn", "-C", "-S", str(benchmark_exe)]
-            result = subprocess.run(llvm_objdump_cmd, capture_output=True, text=True, check=True)
-            mixed_assembly = result.stdout
+    return source_files
+
+def _run_dsymutil(benchmark_exe):
+    """Run dsymutil to generate debug symbols (macOS specific)."""
+    try:
+        logger.info(f"Running dsymutil to generate debug symbols for {benchmark_exe}")
+        dsymutil_cmd = ["dsymutil", str(benchmark_exe)]
+        subprocess.run(dsymutil_cmd, check=True, capture_output=True)
+        return True
+    except Exception as e:
+        logger.warning(f"Failed to run dsymutil: {e}")
+        return False
+
+def _extract_with_objdump(benchmark_exe, benchmark_functions, assembly_dir, has_debug_info):
+    """Extract assembly using objdump with appropriate flags."""
+    try:
+        # Build objdump command with appropriate flags
+        objdump_flags = ["-d", "--no-show-raw-insn", "-C"]
+        if has_debug_info:
+            objdump_flags.insert(0, "-S")  # Add source only if debug info is available
             
-            # Write full mixed assembly for reference
-            with open(assembly_dir / "full_mixed_assembly.txt", "w") as f:
-                f.write(mixed_assembly)
-            
-            # Extract function-specific mixed assembly 
-            for func_name in benchmark_functions:
-                lines = mixed_assembly.split('\n')
-                capturing = False
-                func_mixed_asm = []
-                
-                for line in lines:
-                    if func_name in line and (":" in line or "(" in line):
-                        capturing = True
-                        func_mixed_asm.append(line)
-                    elif capturing:
-                        if ("<" in line and ">" in line and ":" in line and not line.strip().startswith(".")) or "}" in line:
-                            # Likely a new function or end of function
-                            capturing = False
-                        else:
-                            func_mixed_asm.append(line)
-                
-                if func_mixed_asm:
-                    with open(assembly_dir / f"{func_name}.s", "w") as f:
-                        f.write('\n'.join(func_mixed_asm))
-                    logger.info(f"Extracted mixed source/assembly for {func_name}")
-                else:
-                    logger.warning(f"Could not find mixed source/assembly for {func_name}")
+        objdump_cmd = ["objdump"] + objdump_flags + [str(benchmark_exe)]
+        logger.info(f"Running: {' '.join(objdump_cmd)}")
         
-        except (subprocess.SubprocessError, FileNotFoundError) as e:
-            logger.warning(f"Failed to extract with llvm-objdump, trying otool: {e}")
+        result = subprocess.run(objdump_cmd, capture_output=True, text=True, check=True)
+        mixed_assembly = result.stdout
+        
+        # Write full mixed assembly for reference
+        with open(assembly_dir / "full_mixed_assembly.txt", "w") as f:
+            f.write(mixed_assembly)
+        
+        # Extract function-specific assembly
+        for func_name in benchmark_functions:
+            func_asm = _extract_function_assembly(mixed_assembly, func_name)
             
-            try:
-                # Try otool as a fallback on macOS
-                otool_cmd = ["otool", "-tV", str(benchmark_exe)]
-                result = subprocess.run(otool_cmd, capture_output=True, text=True, check=True)
-                disassembly = result.stdout
+            if func_asm:
+                with open(assembly_dir / f"{func_name}.s", "w") as f:
+                    f.write("\n".join(func_asm))
+                logger.info(f"Extracted {'mixed source/' if has_debug_info else ''}assembly for {func_name}")
+            else:
+                logger.warning(f"Could not find {func_name} in assembly output")
                 
-                # Write full disassembly for reference
-                with open(assembly_dir / "full_disassembly.txt", "w") as f:
-                    f.write(disassembly)
-                
-                # Extract function-specific assembly and manually integrate source
-                for func_name in benchmark_functions:
-                    # Look for the function in the disassembly
-                    lines = disassembly.split('\n')
-                    capturing = False
-                    func_asm = []
-                    
-                    for line in lines:
-                        if func_name in line:
-                            capturing = True
-                            func_asm.append(line)
-                        elif capturing:
-                            if "_" in line and ":" in line and not any(x in line for x in ["push", "pop", "mov", "add", "sub"]):
-                                # Likely a new function
-                                capturing = False
-                            else:
-                                func_asm.append(line)
-                    
-                    if func_asm:
-                        with open(assembly_dir / f"{func_name}.s", "w") as f:
-                            # Manually add source code
-                            f.write(f"// Source code for {func_name} (manually added):\n")
-                            for source_file, content in source_files.items():
-                                if func_name in content:
-                                    # Extract the function from source (simple approach)
-                                    lines = content.split('\n')
-                                    func_lines = []
-                                    in_func = False
-                                    brace_count = 0
-                                    
-                                    for source_line in lines:
-                                        if func_name in source_line and '{' in source_line:
-                                            in_func = True
-                                            brace_count = 1
-                                            func_lines.append(source_line)
-                                        elif in_func:
-                                            func_lines.append(source_line)
-                                            brace_count += source_line.count('{')
-                                            brace_count -= source_line.count('}')
-                                            if brace_count <= 0:
-                                                break
-                                    
-                                    if func_lines:
-                                        f.write('\n'.join(func_lines))
-                                        f.write('\n\n')
-                            
-                            f.write("// Assembly:\n")
-                            f.write('\n'.join(func_asm))
-                        logger.info(f"Extracted assembly for {func_name} with manually added source")
-                    else:
-                        logger.warning(f"Could not find assembly for {func_name}")
-                
-            except (subprocess.SubprocessError, FileNotFoundError) as e:
-                logger.warning(f"Failed to extract assembly using otool: {e}")
-                # Fall back to extracting source separately
-                manual_extraction(benchmark_exe, benchmark_functions, source_files, assembly_dir)
-    else:
-        # Linux or other platforms - use regular objdump with -S flag
-        try:
-            # Use objdump to get assembly with source interleaved
-            objdump_cmd = ["objdump", "-d", "--no-show-raw-insn", "-C", "-S", str(benchmark_exe)]
-            result = subprocess.run(objdump_cmd, capture_output=True, text=True, check=True)
-            mixed_assembly = result.stdout
-            
-            # Write full mixed assembly for reference
-            with open(assembly_dir / "full_mixed_assembly.txt", "w") as f:
-                f.write(mixed_assembly)
-            
-            # Extract function-specific mixed assembly 
-            for func_name in benchmark_functions:
-                lines = mixed_assembly.split('\n')
+        return True
+    except Exception as e:
+        logger.warning(f"Error extracting assembly with objdump: {e}")
+        return False
+
+def _extract_function_assembly(assembly_text, func_name):
+    """Extract assembly for a specific function from full assembly text."""
+    lines = assembly_text.splitlines()
+    func_asm = []
+    capturing = False
+    
+    for i, line in enumerate(lines):
+        # Look for function start marker
+        if func_name in line and "<" in line and ">" in line:
+            capturing = True
+            func_asm.append(line)
+        elif capturing:
+            # Look for function end marker (next function or end of file)
+            if "<" in line and ">" in line and ":" in line and not line.strip().startswith("."):
                 capturing = False
-                func_mixed_asm = []
-                
-                for line in lines:
-                    if func_name in line and ":" in line:
-                        capturing = True
-                        func_mixed_asm.append(line)
-                    elif capturing:
-                        if "<" in line and ">" in line and ":" in line and not line.strip().startswith("."):
-                            # Likely a new function
-                            capturing = False
-                        else:
-                            func_mixed_asm.append(line)
-                
-                if func_mixed_asm:
-                    with open(assembly_dir / f"{func_name}.s", "w") as f:
-                        f.write('\n'.join(func_mixed_asm))
-                    logger.info(f"Extracted mixed source/assembly for {func_name}")
-                else:
-                    logger.warning(f"Could not find mixed source/assembly for {func_name}")
-            
-        except (subprocess.SubprocessError, FileNotFoundError) as e:
-            logger.warning(f"Failed to extract mixed source/assembly, falling back to regular assembly: {e}")
-            # Fall back to extracting source separately
-            manual_extraction(benchmark_exe, benchmark_functions, source_files, assembly_dir)
+            else:
+                func_asm.append(line)
+    
+    return func_asm
 
 def manual_extraction(benchmark_exe, benchmark_functions, source_files, assembly_dir):
     """Fallback function to extract assembly and manually combine with source."""
     try:
-        # Fallback to regular objdump without source
+        # Try with standard objdump
         objdump_cmd = ["objdump", "-d", "--no-show-raw-insn", "-C", str(benchmark_exe)]
         result = subprocess.run(objdump_cmd, capture_output=True, text=True, check=True)
         disassembly = result.stdout
@@ -612,7 +575,7 @@ def manual_extraction(benchmark_exe, benchmark_functions, source_files, assembly
                         f.write("// Assembly:\n")
                     
                     f.write('\n'.join(func_asm))
-                logger.info(f"Extracted assembly for {func_name}")
+                logger.info(f"Extracted assembly for {func_name} (with manually added source)")
             else:
                 logger.warning(f"Could not find assembly for {func_name}")
                 
@@ -691,7 +654,7 @@ def run_benchmark(experiment, build_dir, compiler_config, build_flags_id="Releas
         logger.info(f"Performance counters not collected (perf only available on Linux)")
     
     # Extract assembly
-    extract_assembly(build_dir, experiment, results_dir)
+    extract_assembly(build_dir, experiment, results_dir, build_flags_id)
     
     # Create and save metadata
     cxx_flags = "-std=c++20"
@@ -726,7 +689,7 @@ def main():
     parser.add_argument('--experiments', 
                         help='Comma-separated list of experiments to run (default: all)')
     parser.add_argument('--build-flags', default='Release_O3',
-                        help='Build flags identifier (e.g., Release_O3, Debug_O0)')
+                        help='Build flags identifier (e.g., Release_O3, Debug_O0, RelWithDebInfo_O3)')
     parser.add_argument('--force', action='store_true',
                         help='Force re-run of benchmarks even if results exist')
     parser.add_argument('--incremental-build', action='store_true',

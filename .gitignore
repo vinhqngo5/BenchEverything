@@ -38,6 +38,10 @@ env/
 # results/**/perf.data
 # results/**/perf.data.*
 
+# Assembly files
+**/full_mixed_assembly.txt
+**/full_disassembly.txt
+
 # Keep these directories and their important content
 !results/
 !reports/
