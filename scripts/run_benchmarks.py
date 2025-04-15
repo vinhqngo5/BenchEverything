@@ -429,12 +429,12 @@ def _get_benchmark_functions(benchmark_exe, experiment):
 
 def _get_default_benchmark_functions(experiment):
     """Get default benchmark function names based on experiment type."""
-    if experiment['name'] == "int_addition":
-        return ["BM_IntAddition"]
-    elif experiment['name'] == "float_addition":
-        return ["BM_FloatAddition"]
-    else:
-        return []
+    # if experiment['name'] == "int_addition":
+    #     return ["BM_IntAddition"]
+    # elif experiment['name'] == "float_addition":
+    #     return ["BM_FloatAddition"]
+    # else:
+    return []
 
 def _get_source_files(experiment):
     """Get source files for the experiment."""
@@ -683,7 +683,7 @@ def main():
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description='Run benchmarks and generate reports')
     parser.add_argument('--config', 
-                        help='Path to a custom configuration file')
+                        help='Path to a custom configuration file (default: benchmark_config.json)')
     parser.add_argument('--compiler', choices=['gcc', 'clang', 'all'], default='all',
                         help='Compiler to use for benchmarks (default: all)')
     parser.add_argument('--experiments', 

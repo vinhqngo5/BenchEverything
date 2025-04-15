@@ -92,7 +92,7 @@ BenchEverything/
 │   ├── run_benchmarks.py # *** Central script to configure and run benchmarks ***
 │   ├── generate_report.py # Script to generate a single markdown report from one result
 │   ├── generate_combined_report.py # Script to generate summary/comparison reports
-│   ├── config/ # Configuration files (e.g., YAML/JSON) for run_benchmarks.py
+│   ├── config/ # Configuration files (e.g., YAML/JSON) for run_benchmarks.py (currently supported JSON files)
 │   └── requirements.txt # Python dependencies (PyYAML, matplotlib, pandas, etc.)
 ├── third_party/ # Dependencies managed via FetchContent or submodules (GBench often here)
 ├── experiments/ # === Individual Benchmarks ===
@@ -177,17 +177,66 @@ The typical process for adding and running benchmarks:
 
 ### 4.1. Add Experiment
 
-1.  Create the directory `experiments/<experiment_name>/`.
-2.  Write C++ benchmark code in `experiments/<experiment_name>/src/`, using Google Benchmark macros (e.g., `BENCHMARK`, `BENCHMARK_F`). Use fixtures for shared setup/teardown.
-3.  Create `experiments/<experiment_name>/CMakeLists.txt`. Use helper functions (like `add_benchmark_experiment` from `cmake/BenchmarkUtils.cmake`) to define the executable target. Use `find_package` or `FetchContent_MakeAvailable` to declare and link experiment-specific dependencies (common dependencies like GBench should be handled by the root `CMakeLists.txt` or `cmake/Dependencies.cmake`).
-4.  Create the report template `experiments/<experiment_name>/README.md.template` with explanatory text and [Placeholders](#713-template-placeholders).
-5.  *(Optional)* Create `experiments/<experiment_name>/exp_config.json` to override global run configurations (e.g., add specific compiler flags, change perf events) for this experiment only. See [Section 5.4](#54-overrides-exp_configjson).
-6.  *(Optional)* Create `experiments/<experiment_name>/pre_report.py` if you need custom plots or data processing during report generation. See [Section 7.1.2](#712-pre_reportpy-integration).
-7.  Ensure the experiment is discoverable (e.g., the root `CMakeLists.txt` uses `add_subdirectory` to include `experiments/<experiment_name>`).
+1. Create the directory `experiments/<experiment_name>/`.
+   - Look at existing experiments like `int_addition` or `float_addition` for reference
+   - Use a descriptive name that reflects what you're measuring
+
+2. Write C++ benchmark code in `experiments/<experiment_name>/src/`:
+   - Use Google Benchmark macros (`BENCHMARK`, `BENCHMARK_F`) 
+   - Always prefix benchmark functions with `BM_` (e.g., `BM_MyFunction`) for automatic detection
+   - Use `benchmark::DoNotOptimize()` to prevent compiler from optimizing away your benchmark code
+   - Example:
+     ```cpp
+     #include <benchmark/benchmark.h>
+     
+     static void BM_MyOperation(benchmark::State& state) {
+       for (auto _ : state) {
+         // Code to benchmark
+         int result = operation();
+         benchmark::DoNotOptimize(result);
+       }
+     }
+     BENCHMARK(BM_MyOperation);
+     ```
+
+3. Create `experiments/<experiment_name>/CMakeLists.txt`:
+   - Name your benchmark executable consistently (typically `<experiment_name>_benchmark`)
+   - Use the helper function from BenchmarkUtils.cmake:
+     ```cmake
+     add_benchmark_experiment(
+       NAME my_experiment
+       SOURCES src/benchmark.cpp
+       # Optional: LIBRARIES dependency1 dependency2
+     )
+     ```
+
+4. Create `experiments/<experiment_name>/README.md.template` with explanatory text and [Placeholders](#713-template-placeholders).
+
+5. Add your experiment to the configuration file:
+   - Edit `scripts/config/benchmark_config.json` and add to the `experiments` array:
+     ```json
+     {
+       "name": "my_experiment",
+       "benchmark_executable": "my_experiment_benchmark",
+       "template_file": "experiments/my_experiment/README.md.template",
+       "output_file": "reports/my_experiment_report.md"
+     }
+     ```
+
+6. Add your experiment to the root CMakeLists.txt:
+   ```cmake
+   add_subdirectory(experiments/my_experiment)
+   ```
+7.  *(Optional)* Create `experiments/<experiment_name>/exp_config.json` to override global run configurations (e.g., add specific compiler flags, change perf events) for this experiment only. See [Section 5.4](#54-overrides-exp_configjson).
+8.  *(Optional)* Create `experiments/<experiment_name>/pre_report.py` if you need custom plots or data processing during report generation. See [Section 7.1.2](#712-pre_reportpy-integration).
+9. Test your experiment:
+```
+python scripts/run_benchmarks.py --experiments my_experiment -compiler gcc --force 
+```
 
 ### 4.2. Configure Run
 
-Modify `scripts/run_benchmarks.py` or its associated configuration file (e.g., `scripts/config/my_run.yaml`) to define:
+Modify `scripts/run_benchmarks.py` or its associated configuration file (e.g., `scripts/config/benchmark_config.json`) to define:
 *   **Target Configurations:** A list or matrix of compilers, build flag sets (e.g., `Release_O3_native`), platforms.
 *   **Target Experiments:** Which experiments to run (`--all`, `--experiments <name1>,<name2>`, `--experiments-matching <pattern>`).
 *   **Global Settings:** Default Google Benchmark arguments (`--benchmark_repetitions`), default `perf` events.
@@ -259,7 +308,7 @@ Options control which results to aggregate (`--results-base-dir`, `--hashes`, `-
 
 ## 5. Configuration (`run_benchmarks.py`)
 
-The `scripts/run_benchmarks.py` script (potentially loading config from YAML/JSON in `scripts/config/`) is the central point for controlling benchmark execution.
+The `scripts/run_benchmarks.py` script (config can be loaded from YAML/JSON in `scripts/config/`) is the central point for controlling benchmark execution.
 
 ### 5.1. Responsibilities
 
@@ -444,24 +493,8 @@ When generating comparison reports, `generate_combined_report.py` may create new
 
 ### 7.3. Godbolt Integration
 
-Direct automatic link generation is complex. The recommended approach is to include the necessary information in the report template:
-
-### Assembly for BM_MyFunction
-
-Compiler: {{METADATA:config.compiler_version}}
-Flags: `{{METADATA:config.cxx_flags_used}}`
-
-```cpp
-// Optional: Include C++ source snippet here
-void BM_MyFunction(...) { ... }
-```
-
-```asm
-{{ASSEMBLY:BM_MyFunction}}
-```
-
 [View on Godbolt (Manual Setup Required)](https://godbolt.org/)
-*(Copy the C++ snippet, select the compiler version, and add the flags above in Godbolt)*
+*(Copy the C++ snippet, select the compiler version, add the google benchmark library and add the flags above in Godbolt)*
 
 ---
 
@@ -514,16 +547,58 @@ The project is designed to be extended:
 *   **Performance Tools:** `perf` (Linux `linux-tools-common` package or similar). Other platform-specific tools if added.
 *   **Build Tools:** `make`, `ninja`, or Visual Studio Build Tools depending on CMake generator.
 
-### 9.2. Basic Steps
+### 9.2. Basic Steps (Quickstart)
 
 1.  **Clone:** `git clone <repo_url> BenchEverything`
-2.  **Install Deps:** `cd BenchEverything && pip install -r scripts/requirements.txt`
-3.  **Add Experiment:** Follow [Section 4.1](#41-add-experiment).
-4.  **Configure Run:** Edit `scripts/config/default.yaml` or create a new one and use `python scripts/run_benchmarks.py --config <your_config.yaml> ...`. Specify targets.
-5.  **Run Benchmarks:** `python scripts/run_benchmarks.py [options]`
-6.  **Generate Single Reports (Optional but Recommended):** `python scripts/generate_report.py --result-dir <path_to_specific_result>` (Repeat for results of interest).
-7.  **Generate Combined Reports (Summary/Comparison):** `python scripts/generate_combined_report.py [options]` (e.g., ` --type comparison --compare-configs gcc,clang`)
-8.  **Commit Results & Reports:** `git add results/ reports/ && git commit -m "Run benchmarks for config X and generate reports"`
+2.  **Install Dependencies:** 
+    ```bash
+    cd BenchEverything
+    pip install -r scripts/requirements.txt
+    ```
+    For virtual environment: `python -m venv .venv && source .venv/bin/activate` (recommended)
+
+3.  **Add or Use Experiments:** 
+    - **Use existing experiments:** Skip directly to configuration (step 4) if you want to run existing benchmarks
+    - **Add your own:** Follow [Section 4.1](#41-add-experiment) to create a new experiment
+    - **View available experiments:** Check the `experiments/` directory to see what's already there
+    - All experiments are automatically detected - benchmark functions are found through Google Benchmark's `--benchmark_list_tests` feature
+
+4.  **Configure Your Run:** 
+    - **Default configuration:** Use `python scripts/run_benchmarks.py` to run all experiments with default settings
+    - **View current config:** Examine `scripts/config/benchmark_config.json` to understand available compilers and build flags
+    - **Customize:** Edit the config file or specify options on command line:
+      ```bash
+      python scripts/run_benchmarks.py --experiments exp1,exp2 --configs gcc_release,clang_debug
+      ```
+    - See [Section 5](#5-configuration-run_benchmarkspy) for complete configuration details
+
+5.  **Run Benchmarks:** 
+    ```bash
+    python scripts/run_benchmarks.py [options]
+    ```
+    Common options:
+    - `--force`: Overwrite existing results
+    - `--incremental-build`: Skip clean build step
+    - `--experiments <name1>,<name2>`: Run specific experiments
+    - See [Section 4.3](#43-run-benchmarks-run_benchmarkspy) for the complete workflow
+
+6.  **Generate Individual Reports:** 
+    ```bash
+    python scripts/generate_report.py --result-dir <path_to_specific_result>
+    ```
+    Refer to [Section 7.1](#71-single-report-generation-generate_reportpy) for report customization
+
+7.  **Generate Combined Reports:** 
+    ```bash
+    python scripts/generate_combined_report.py --type comparison --compare-configs gcc,clang
+    ```
+    See [Section 7.2](#72-combined-report-generation-generate_combined_reportpy) for comparison options
+
+8.  **Commit Results & Reports:** 
+    ```bash
+    git add results/ reports/ && git commit -m "Run benchmarks for config X and generate reports"
+    ```
+    This preserves benchmark results for [cross-machine comparisons](#46-cross-machinecompiler-workflow)
 
 ### 9.3. Benchmarking Tips
 

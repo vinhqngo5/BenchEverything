@@ -69,7 +69,7 @@ def find_experiment_config(experiment_name):
 def find_template_file(experiment_name):
     """Find the template file for the given experiment."""
     exp_config = find_experiment_config(experiment_name)
-    if (exp_config and 'template_file' in exp_config):
+    if exp_config and 'template_file' in exp_config:
         template_path = PROJECT_ROOT / exp_config['template_file']
         if template_path.exists():
             return template_path
@@ -230,7 +230,8 @@ def parse_perf_data(results_dir):
         with open(perf_file, 'r') as f:
             perf_data = f.read()
         
-        # Return the raw data - it will be formatted as a code block when inserted in the template
+        # Simple formatting for perf data
+        # In a real implementation, you might want to parse and format this more nicely
         return perf_data
     except Exception as e:
         logger.error(f"Error parsing perf data: {e}")
@@ -424,8 +425,8 @@ def replace_placeholders(template_content, results_dir, report_dir, assets_dir, 
         field_value = str(curr_obj)
         content = content.replace(match.group(0), field_value)
     
-    # Replace perf data placeholders - wrap raw perf data in code blocks
-    content = content.replace('{{PERF_SUMMARY}}', f"```\n{perf_data}\n```")
+    # Replace perf data placeholders
+    content = content.replace('{{PERF_SUMMARY}}', perf_data)
     content = content.replace('{{PERF_LOG}}', f"```\n{perf_data}\n```")
     
     # Replace assembly placeholders
