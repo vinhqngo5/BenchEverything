@@ -502,223 +502,6 @@ def create_metadata_comparison_table(baseline_metadata, contender_metadata):
     
     return table
 
-def create_comparison_report(baseline_dir, contender_dir, experiment_names=None, output_dir=None):
-    """Create a comparison report between baseline and contender configurations.
-    
-    Args:
-        baseline_dir: Path to baseline results directory
-        contender_dir: Path to contender results directory
-        experiment_names: List of experiment names to include (default: all)
-        output_dir: Directory to save the report (default: auto-generated)
-        
-    Returns:
-        Path to the generated report
-    """
-    # Validate directories
-    baseline_dir = validate_path(baseline_dir)
-    contender_dir = validate_path(contender_dir)
-    
-    if not baseline_dir or not contender_dir:
-        logger.error("Invalid baseline or contender directory")
-        return None
-    
-    # Get configuration labels
-    baseline_label = get_configuration_label(baseline_dir)
-    contender_label = get_configuration_label(contender_dir)
-    
-    # Create report directory
-    if not output_dir:
-        # Determine metadata from paths
-        _, b_compiler, b_flags, b_hash = extract_config_info(baseline_dir)
-        _, c_compiler, c_flags, c_hash = extract_config_info(contender_dir)
-        
-        # Create a descriptive name for the comparison
-        if b_compiler and c_compiler:
-            comparison_name = f"{b_compiler}_vs_{c_compiler}"
-        elif b_flags and c_flags:
-            comparison_name = f"{b_flags}_vs_{c_flags}"
-        else:
-            comparison_name = f"{baseline_dir.name}_vs_{contender_dir.name}"
-        
-        # Create report directory
-        reports_dir = PROJECT_ROOT / "reports"
-        platform_info, _, _, _ = extract_config_info(baseline_dir)
-        
-        if platform_info:
-            report_dir = reports_dir / platform_info / "comparisons"
-        else:
-            report_dir = reports_dir / "comparisons"
-    else:
-        report_dir = Path(output_dir)
-        comparison_name = f"{baseline_label}_vs_{contender_label}".replace(' ', '_')
-    
-    # Ensure report directory exists
-    os.makedirs(report_dir, exist_ok=True)
-    
-    # Get experiment names to compare
-    if not experiment_names:
-        experiment_names = find_all_experiment_names()
-    elif isinstance(experiment_names, str):
-        experiment_names = experiment_names.split(',')
-    
-    # Start building the report content
-    report_content = f"# Comparison Report: {baseline_label} vs {contender_label}\n\n"
-    report_content += f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-    
-    # Add table of contents
-    report_content += "## Table of Contents\n\n"
-    report_content += "1. [Configuration Details](#configuration-details)\n"
-    report_content += "2. [Summary of Results](#summary-of-results)\n"
-    
-    idx = 3
-    for experiment_name in experiment_names:
-        report_content += f"{idx}. [{experiment_name}](#{experiment_name.lower().replace(' ', '-')})\n"
-        idx += 1
-    
-    report_content += f"{idx}. [Failed Comparisons](#failed-comparisons)\n\n"
-    
-    # Add configuration section
-    report_content += "## Configuration Details\n\n"
-    report_content += f"### Baseline: {baseline_label}\n"
-    report_content += f"Path: `{baseline_dir}`\n\n"
-    report_content += f"### Contender: {contender_label}\n"
-    report_content += f"Path: `{contender_dir}`\n\n"
-    
-    # Process each experiment
-    successful_experiments = []
-    failed_experiments = []
-    
-    # Collect summary data for all experiments
-    summary_data = []
-    
-    for experiment_name in experiment_names:
-        logger.info(f"Processing experiment: {experiment_name}")
-        
-        # Load benchmark results
-        baseline_data, baseline_metadata = load_benchmark_results(baseline_dir, experiment_name)
-        contender_data, contender_metadata = load_benchmark_results(contender_dir, experiment_name)
-        
-        # Skip if either baseline or contender data is missing
-        if not baseline_data:
-            logger.warning(f"Baseline data missing for experiment: {experiment_name}")
-            failed_experiments.append((experiment_name, "Baseline data missing"))
-            continue
-        
-        if not contender_data:
-            logger.warning(f"Contender data missing for experiment: {experiment_name}")
-            failed_experiments.append((experiment_name, "Contender data missing"))
-            continue
-        
-        # Identify common metrics
-        common_metrics = identify_common_metrics(baseline_data, contender_data)
-        
-        if not common_metrics:
-            logger.warning(f"No common metrics found for experiment: {experiment_name}")
-            failed_experiments.append((experiment_name, "No common metrics"))
-            continue
-        
-        # Add experiment section to report
-        report_content += f"## {experiment_name}\n\n"
-        
-        # Add metadata comparison table
-        if baseline_metadata and contender_metadata:
-            report_content += "### Configuration Details\n\n"
-            metadata_comparison = create_metadata_comparison_table(baseline_metadata, contender_metadata)
-            report_content += metadata_comparison + "\n\n"
-        
-        # Add links to original reports and result directories
-        report_content += "### Original Reports and Data\n\n"
-        
-        # Get report and results paths
-        baseline_report = get_original_report_path(baseline_dir, experiment_name)
-        contender_report = get_original_report_path(contender_dir, experiment_name)
-        baseline_results = get_results_dir_link(baseline_dir, experiment_name)
-        contender_results = get_results_dir_link(contender_dir, experiment_name)
-        
-        # Add links to reports and results
-        report_content += "#### Baseline\n"
-        if baseline_report:
-            report_content += f"- [Report]({get_path_for_report(baseline_report, report_dir)})\n"
-        else:
-            report_content += "- Report: Not available\n"
-        
-        report_content += f"- [Raw Results]({get_path_for_report(baseline_results, report_dir)})\n\n"
-        
-        report_content += "#### Contender\n"
-        if contender_report:
-            report_content += f"- [Report]({get_path_for_report(contender_report, report_dir)})\n"
-        else:
-            report_content += "- Report: Not available\n"
-        
-        report_content += f"- [Raw Results]({get_path_for_report(contender_results, report_dir)})\n\n"
-        
-        # Create comparison table
-        comparison_table = create_comparison_table(
-            baseline_data, contender_data, baseline_label, contender_label, common_metrics
-        )
-        report_content += "### Benchmark Comparison\n\n"
-        report_content += comparison_table + "\n\n"
-        
-        # Add data to summary
-        # Get the primary metric (e.g., real_time or cpu_time)
-        primary_metric = 'real_time' if 'real_time' in common_metrics else 'cpu_time'
-        if primary_metric in common_metrics:
-            # Calculate average improvement for the experiment
-            improvements = []
-            baseline_benchmarks = {b['name']: b for b in baseline_data.get('benchmarks', [])}
-            contender_benchmarks = {b['name']: b for b in contender_data.get('benchmarks', [])}
-            common_benchmarks = set(baseline_benchmarks.keys()).intersection(set(contender_benchmarks.keys()))
-            
-            for bench_name in common_benchmarks:
-                baseline_value = float(baseline_benchmarks[bench_name].get(primary_metric, 0))
-                contender_value = float(contender_benchmarks[bench_name].get(primary_metric, 0))
-                improvement = calculate_improvement(baseline_value, contender_value, primary_metric)
-                if math.isfinite(improvement):
-                    improvements.append(improvement)
-            
-            avg_improvement = sum(improvements) / len(improvements) if improvements else 0
-            summary_data.append((experiment_name, avg_improvement, len(common_benchmarks)))
-        
-        successful_experiments.append(experiment_name)
-    
-    # Add summary section after processing all experiments
-    report_content = report_content.replace("## Summary of Results\n\n", "")  # Remove placeholder
-    summary_section = "## Summary of Results\n\n"
-    
-    if summary_data:
-        summary_section += "| Experiment | Average Improvement (%) | Number of Benchmarks |\n"
-        summary_section += "|------------|-------------------------|------------------------|\n"
-        
-        for experiment_name, avg_improvement, num_benchmarks in sorted(summary_data, key=lambda x: x[1], reverse=True):
-            color = "green" if avg_improvement > 0 else "red" if avg_improvement < 0 else ""
-            formatted_improvement = f"<span style='color:{color}'>{avg_improvement:.2f}%</span>" if color else f"{avg_improvement:.2f}%"
-            summary_section += f"| {experiment_name} | {formatted_improvement} | {num_benchmarks} |\n"
-    
-    # Insert summary section after table of contents
-    toc_end_idx = report_content.find("## Configuration Details")
-    if toc_end_idx != -1:
-        report_content = report_content[:toc_end_idx] + summary_section + "\n" + report_content[toc_end_idx:]
-    
-    # Add failed comparisons section
-    if failed_experiments:
-        report_content += "## Failed Comparisons\n\n"
-        report_content += "| Experiment | Reason |\n"
-        report_content += "|------------|--------|\n"
-        
-        for experiment, reason in failed_experiments:
-            report_content += f"| {experiment} | {reason} |\n"
-    
-    # Write report to file
-    report_file = report_dir / f"{comparison_name}_report.md"
-    try:
-        with open(report_file, 'w') as f:
-            f.write(report_content)
-        logger.info(f"Report generated successfully: {report_file}")
-        return report_file
-    except Exception as e:
-        logger.error(f"Error writing report: {e}")
-        return None
-
 def get_path_for_report(path, report_dir=None):
     """Convert a path to a format suitable for inclusion in a report.
     
@@ -763,7 +546,7 @@ def get_path_for_report(path, report_dir=None):
             first_pos = path_str.find(prefix)
             second_pos = path_str.find(prefix, first_pos + 1)
             
-            if second_pos != -1:
+            if (second_pos != -1):
                 # Take everything from the second occurrence forward
                 clean_path = path_str[second_pos:]
                 return clean_path
@@ -775,29 +558,332 @@ def get_path_for_report(path, report_dir=None):
     # Return absolute path as a last resort
     return path_str
 
+def create_multi_comparison_report(baseline_dir, contender_dirs, experiment_names=None, output_dir=None):
+    """Create a comparison report between baseline and multiple contender configurations.
+    
+    Args:
+        baseline_dir: Path to baseline results directory
+        contender_dirs: List of paths to contender result directories
+        experiment_names: List of experiment names to include (default: all)
+        output_dir: Directory to save the report (default: auto-generated)
+        
+    Returns:
+        Path to the generated report
+    """
+    # Validate directories
+    baseline_dir = validate_path(baseline_dir)
+    if not baseline_dir:
+        logger.error("Invalid baseline directory")
+        return None
+    
+    valid_contenders = []
+    for contender_dir in contender_dirs:
+        valid_path = validate_path(contender_dir)
+        if valid_path:
+            valid_contenders.append(valid_path)
+        else:
+            logger.warning(f"Skipping invalid contender directory: {contender_dir}")
+    
+    if not valid_contenders:
+        logger.error("No valid contender directories provided")
+        return None
+    
+    # Get configuration labels
+    baseline_label = get_configuration_label(baseline_dir)
+    contender_labels = [get_configuration_label(contender) for contender in valid_contenders]
+    
+    # Create report directory
+    if not output_dir:
+        # Create report directory based on platform
+        platform_info, _, _, _ = extract_config_info(baseline_dir)
+        reports_dir = PROJECT_ROOT / "reports"
+        
+        if platform_info:
+            report_dir = reports_dir / platform_info / "comparisons"
+        else:
+            report_dir = reports_dir / "comparisons"
+        
+        # Create a comparison name based on the number of configurations
+        if len(valid_contenders) == 1:
+            # Simple comparison name for single contender
+            _, b_compiler, b_flags, _ = extract_config_info(baseline_dir)
+            _, c_compiler, c_flags, _ = extract_config_info(valid_contenders[0])
+            
+            if b_compiler and c_compiler:
+                comparison_name = f"{b_compiler}_vs_{c_compiler}"
+            elif b_flags and c_flags:
+                comparison_name = f"{b_flags}_vs_{c_flags}"
+            else:
+                comparison_name = f"{baseline_dir.name}_vs_{valid_contenders[0].name}"
+        else:
+            # Multi-comparison name
+            contender_count = len(valid_contenders)
+            _, compiler, flags, _ = extract_config_info(baseline_dir)
+            comparison_name = f"{compiler}_{flags}_vs_{contender_count}_contenders"
+    else:
+        report_dir = Path(output_dir)
+        
+        if len(valid_contenders) == 1:
+            comparison_name = f"{baseline_label}_vs_{contender_labels[0]}".replace(' ', '_')
+        else:
+            comparison_name = f"{baseline_label}_vs_multiple_contenders".replace(' ', '_')
+    
+    # Ensure report directory exists
+    os.makedirs(report_dir, exist_ok=True)
+    
+    # Get experiment names to compare
+    if not experiment_names:
+        experiment_names = find_all_experiment_names()
+    elif isinstance(experiment_names, str):
+        experiment_names = experiment_names.split(',')
+    
+    # Start building the report content
+    if len(valid_contenders) == 1:
+        report_content = f"# Comparison Report: {baseline_label} vs {contender_labels[0]}\n\n"
+    else:
+        report_content = f"# Multi-Configuration Comparison Report\n\n"
+    
+    report_content += f"Generated on: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
+    
+    # Add table of contents
+    report_content += "## Table of Contents\n\n"
+    report_content += "1. [Configuration Details](#configuration-details)\n"
+    report_content += "2. [Summary of Results](#summary-of-results)\n"
+    
+    idx = 3
+    for experiment_name in experiment_names:
+        report_content += f"{idx}. [{experiment_name}](#{experiment_name.lower().replace(' ', '-')})\n"
+        idx += 1
+    
+    report_content += f"{idx}. [Failed Comparisons](#failed-comparisons)\n\n"
+    
+    # Add configuration section
+    report_content += "## Configuration Details\n\n"
+    report_content += f"### Baseline: {baseline_label}\n"
+    report_content += f"Path: `{baseline_dir}`\n\n"
+    
+    for i, (contender_dir, contender_label) in enumerate(zip(valid_contenders, contender_labels)):
+        report_content += f"### Contender {i+1}: {contender_label}\n"
+        report_content += f"Path: `{contender_dir}`\n\n"
+    
+    # Process each experiment
+    successful_experiments = []
+    failed_experiments = []
+    
+    # Collect summary data for all experiments
+    summary_data = []
+    
+    for experiment_name in experiment_names:
+        logger.info(f"Processing experiment: {experiment_name}")
+        
+        # Load baseline benchmark results
+        baseline_data, baseline_metadata = load_benchmark_results(baseline_dir, experiment_name)
+        
+        # Skip if baseline data is missing
+        if not baseline_data:
+            logger.warning(f"Baseline data missing for experiment: {experiment_name}")
+            failed_experiments.append((experiment_name, "Baseline data missing"))
+            continue
+        
+        # Start experiment section in report
+        report_content += f"## {experiment_name}\n\n"
+        
+        # Process each contender for this experiment
+        exp_summary_data = {}  # Track summary data for this experiment
+        valid_contender_count = 0
+        
+        # Add links to original reports and result directories for baseline
+        report_content += "### Original Reports and Data\n\n"
+        report_content += "#### Baseline\n"
+        baseline_report = get_original_report_path(baseline_dir, experiment_name)
+        baseline_results = get_results_dir_link(baseline_dir, experiment_name)
+        
+        if baseline_report:
+            report_content += f"- [Report]({get_path_for_report(baseline_report, report_dir)})\n"
+        else:
+            report_content += "- Report: Not available\n"
+        
+        report_content += f"- [Raw Results]({get_path_for_report(baseline_results, report_dir)})\n\n"
+        
+        for i, (contender_dir, contender_label) in enumerate(zip(valid_contenders, contender_labels)):
+            # Load contender benchmark results
+            contender_data, contender_metadata = load_benchmark_results(contender_dir, experiment_name)
+            
+            # Skip this contender if data is missing
+            if not contender_data:
+                logger.warning(f"Contender {i+1} data missing for experiment: {experiment_name}")
+                failed_experiments.append((experiment_name, f"Contender {i+1} ({contender_label}) data missing"))
+                continue
+            
+            # Identify common metrics
+            common_metrics = identify_common_metrics(baseline_data, contender_data)
+            
+            if not common_metrics:
+                logger.warning(f"No common metrics found for experiment {experiment_name} with contender {i+1}")
+                failed_experiments.append((experiment_name, f"No common metrics with contender {i+1} ({contender_label})"))
+                continue
+            
+            # Add contender report link
+            report_content += f"#### Contender {i+1}: {contender_label}\n"
+            contender_report = get_original_report_path(contender_dir, experiment_name)
+            contender_results = get_results_dir_link(contender_dir, experiment_name)
+            
+            if contender_report:
+                report_content += f"- [Report]({get_path_for_report(contender_report, report_dir)})\n"
+            else:
+                report_content += "- Report: Not available\n"
+            
+            report_content += f"- [Raw Results]({get_path_for_report(contender_results, report_dir)})\n\n"
+            
+            # Add metadata comparison table
+            if baseline_metadata and contender_metadata:
+                report_content += f"### Configuration Comparison: Baseline vs {contender_label}\n\n"
+                metadata_comparison = create_metadata_comparison_table(baseline_metadata, contender_metadata)
+                report_content += metadata_comparison + "\n\n"
+            
+            # Create comparison table
+            report_content += f"### Benchmark Comparison: Baseline vs {contender_label}\n\n"
+            comparison_table = create_comparison_table(
+                baseline_data, contender_data, baseline_label, contender_label, common_metrics
+            )
+            report_content += comparison_table + "\n\n"
+            
+            # Add data to summary for this contender
+            primary_metric = 'real_time' if 'real_time' in common_metrics else 'cpu_time'
+            if primary_metric in common_metrics:
+                # Calculate average improvement for the experiment
+                improvements = []
+                baseline_benchmarks = {b['name']: b for b in baseline_data.get('benchmarks', [])}
+                contender_benchmarks = {b['name']: b for b in contender_data.get('benchmarks', [])}
+                common_benchmarks = set(baseline_benchmarks.keys()).intersection(set(contender_benchmarks.keys()))
+                
+                for bench_name in common_benchmarks:
+                    baseline_value = float(baseline_benchmarks[bench_name].get(primary_metric, 0))
+                    contender_value = float(contender_benchmarks[bench_name].get(primary_metric, 0))
+                    improvement = calculate_improvement(baseline_value, contender_value, primary_metric)
+                    if math.isfinite(improvement):
+                        improvements.append(improvement)
+                
+                avg_improvement = sum(improvements) / len(improvements) if improvements else 0
+                exp_summary_data[contender_label] = (avg_improvement, len(common_benchmarks))
+                valid_contender_count += 1
+        
+        # Add experiment to successful list if at least one contender was successfully compared
+        if valid_contender_count > 0:
+            successful_experiments.append(experiment_name)
+            summary_data.append((experiment_name, exp_summary_data))
+        else:
+            # If no contenders were successfully compared, add to failed list
+            if experiment_name not in [f[0] for f in failed_experiments]:
+                failed_experiments.append((experiment_name, "No valid contenders for comparison"))
+    
+    # Add summary section after processing all experiments
+    report_content = report_content.replace("## Summary of Results\n\n", "")  # Remove placeholder
+    summary_section = "## Summary of Results\n\n"
+    
+    if summary_data:
+        # Create summary table headers with all contenders
+        headers = ["Experiment"]
+        for contender_label in contender_labels:
+            headers.append(f"{contender_label} Improvement (%)")
+        headers.append("Best Contender")
+        
+        summary_section += "| " + " | ".join(headers) + " |\n"
+        summary_section += "| " + " | ".join(["-" * len(header) for header in headers]) + " |\n"
+        
+        # Add data for each experiment
+        for experiment_name, exp_data in summary_data:
+            row = [experiment_name]
+            
+            # Find best contender for this experiment
+            best_improvement = -float('inf')
+            best_contender = ""
+            
+            # Add improvement data for each contender
+            for contender_label in contender_labels:
+                if contender_label in exp_data:
+                    avg_improvement, _ = exp_data[contender_label]
+                    
+                    # Track best contender
+                    if avg_improvement > best_improvement:
+                        best_improvement = avg_improvement
+                        best_contender = contender_label
+                    
+                    # Format improvement value
+                    color = "green" if avg_improvement > 0 else "red" if avg_improvement < 0 else ""
+                    formatted_improvement = f"<span style='color:{color}'>{avg_improvement:.2f}%</span>" if color else f"{avg_improvement:.2f}%"
+                    row.append(formatted_improvement)
+                else:
+                    row.append("N/A")
+            
+            # Add best contender
+            row.append(best_contender if best_contender else "None")
+            
+            # Add row to table
+            summary_section += "| " + " | ".join(row) + " |\n"
+    
+    # Insert summary section after table of contents
+    toc_end_idx = report_content.find("## Configuration Details")
+    if toc_end_idx != -1:
+        report_content = report_content[:toc_end_idx] + summary_section + "\n" + report_content[toc_end_idx:]
+    
+    # Add failed comparisons section
+    if failed_experiments:
+        report_content += "## Failed Comparisons\n\n"
+        report_content += "| Experiment | Reason |\n"
+        report_content += "|------------|--------|\n"
+        
+        for experiment, reason in failed_experiments:
+            report_content += f"| {experiment} | {reason} |\n"
+    
+    # Write report to file
+    report_file = report_dir / f"{comparison_name}_report.md"
+    try:
+        with open(report_file, 'w') as f:
+            f.write(report_content)
+        logger.info(f"Report generated successfully: {report_file}")
+        return report_file
+    except Exception as e:
+        logger.error(f"Error writing report: {e}")
+        return None
+
 def main():
     """Main function to generate combined reports."""
     # Parse command-line arguments
     parser = argparse.ArgumentParser(description='Generate a combined comparison report from benchmark results')
     parser.add_argument('--baseline', required=True,
                         help='Path to the baseline result directory')
-    parser.add_argument('--contender', required=True,
-                        help='Path to the contender result directory')
+    parser.add_argument('--contender', 
+                        help='Path to a single contender result directory')
+    parser.add_argument('--contenders',
+                        help='Comma-separated list of paths to multiple contender result directories')
     parser.add_argument('--experiments',
                         help='Comma-separated list of experiments to include (default: all)')
     parser.add_argument('--output-dir',
                         help='Directory to save the report (default: auto-generated)')
     args = parser.parse_args()
     
+    # Ensure we have at least one contender specified
+    if not args.contender and not args.contenders:
+        logger.error("Either --contender or --contenders must be specified")
+        sys.exit(1)
+    
+    # Process contenders: combine single contender and multiple contenders if both are provided
+    contenders = []
+    if args.contender:
+        contenders.append(args.contender)
+    if args.contenders:
+        contenders.extend(args.contenders.split(','))
+    
     # Get experiment names
     experiment_names = None
     if args.experiments:
         experiment_names = args.experiments.split(',')
     
-    # Create comparison report
-    report_file = create_comparison_report(
+    # Create comparison report with multiple contenders
+    report_file = create_multi_comparison_report(
         args.baseline,
-        args.contender,
+        contenders,
         experiment_names,
         args.output_dir
     )
