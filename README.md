@@ -2,49 +2,44 @@
 
 ## Table of Contents
 
-*   [1. Introduction](#1-introduction)
-    *   [1.1. Goal](#11-goal)
-    *   [1.2. Core Philosophy](#12-core-philosophy)
-*   [2. Core Concepts](#2-core-concepts)
-*   [3. Directory Structure](#3-directory-structure)
-*   [4. Workflow](#4-workflow)
-    *   [4.1. Add Experiment](#41-add-experiment)
-    *   [4.2. Configure Run](#42-configure-run)
-    *   [4.3. Run Benchmarks (`run_benchmarks.py`)](#43-run-benchmarks-run_benchmarkspy)
-    *   [4.4. Generate Single Report (`generate_report.py`)](#44-generate-single-report-generate_reportpy)
-    *   [4.5. Generate Combined Reports (`generate_combined_report.py`)](#45-generate-combined-reports-generate_combined_reportpy)
-    *   [4.6. Cross-Machine/Compiler Workflow](#46-cross-machinecompiler-workflow)
-*   [5. Configuration (`run_benchmarks.py`)](#5-configuration-run_benchmarkspy)
-    *   [5.1. Responsibilities](#51-responsibilities)
-    *   [5.2. Toolchain Files](#52-toolchain-files)
-    *   [5.3. Build Management](#53-build-management)
-    *   [5.4. Overrides (`exp_config.json`)](#54-overrides-exp_configjson)
-*   [6. Data Collection Details](#6-data-collection-details)
-    *   [6.1. Google Benchmark](#61-google-benchmark)
-    *   [6.2. Perf (Linux)](#62-perf-linux)
-    *   [6.3. Assembly](#63-assembly)
-    *   [6.4. Metadata (`metadata.json`)](#64-metadata-metadatajson)
-    *   [6.5. Data Commits](#65-data-commits)
-*   [7. Reporting](#7-reporting)
-    *   [7.1. Single Report Generation (`generate_report.py`)](#71-single-report-generation-generate_reportpy)
-        *   [7.1.1. Report Structure & Assets](#711-report-structure--assets)
-        *   [7.1.2. `pre_report.py` Integration](#712-pre_reportpy-integration)
-        *   [7.1.3. Template Placeholders](#713-template-placeholders)
-        *   [7.1.4. Handling Failures](#714-handling-failures)
-    *   [7.2. Combined Report Generation (`generate_combined_report.py`)](#72-combined-report-generation-generate_combined_reportpy)
-        *   [7.2.1. Report Types (Summary, Comparison)](#721-report-types-summary-comparison)
-        *   [7.2.2. Comparison Assets](#722-comparison-assets)
-        *   [7.2.3. Templates for Combined Reports](#723-templates-for-combined-reports)
-    *   [7.3. Godbolt Integration](#73-godbolt-integration)
-*   [8. Extensibility Guide](#8-extensibility-guide)
-    *   [8.1. Adding a New Profiler](#81-adding-a-new-profiler)
-    *   [8.2. Adding Custom Analysis/Plots](#82-adding-custom-analysisplots)
-    *   [8.3. Supporting New Platforms](#83-supporting-new-platforms)
-*   [9. Usage](#9-usage)
-    *   [9.1. Prerequisites](#91-prerequisites)
-    *   [9.2. Basic Steps](#92-basic-steps)
-    *   [9.3. Benchmarking Tips](#93-benchmarking-tips)
-*   [10. Future Considerations](#10-future-considerations)
+* [1. Introduction](#1-introduction)
+   * [1.1. Goal](#11-goal)
+   * [1.2. Core Philosophy](#12-core-philosophy)
+* [2. Core Concepts](#2-core-concepts)
+* [3. Directory Structure](#3-directory-structure)
+* [4. Quickstart Guide](#4-quickstart-guide)
+   * [4.1. Prerequisites](#41-prerequisites)
+   * [4.2. Running Existing Benchmarks](#42-running-existing-benchmarks)
+   * [4.3. Creating a New Benchmark](#43-creating-a-new-benchmark)
+   * [4.4. Generating Reports](#44-generating-reports)
+   * [4.5. Cross-Machine Workflow](#45-cross-machine-workflow)
+* [5. Creating and Managing Experiments](#5-creating-and-managing-experiments)
+   * [5.1. Experiment Structure](#51-experiment-structure)
+   * [5.2. Writing Benchmark Code](#52-writing-benchmark-code)
+   * [5.3. CMake Integration](#53-cmake-integration)
+   * [5.4. Experiment-Specific Configuration](#54-experiment-specific-configuration)
+   * [5.5. Pre-Report Scripts](#55-pre-report-scripts)
+* [6. Running Benchmarks (`run_benchmarks.py`)](#6-running-benchmarks-run_benchmarkspy)
+   * [6.1. Command-Line Options](#61-command-line-options)
+   * [6.2. Configuration File (`benchmark_config.json`)](#62-configuration-file-benchmark_configjson)
+   * [6.3. Build Management](#63-build-management)
+   * [6.4. Toolchain Files](#64-toolchain-files)
+   * [6.5. Data Collection](#65-data-collection)
+   * [6.6. Result Directory Structure](#66-result-directory-structure)
+* [7. Generating Reports](#7-generating-reports)
+   * [7.1. Single Report Generation (`generate_report.py`)](#71-single-report-generation-generate_reportpy)
+      * [7.1.1. Report Structure & Assets](#711-report-structure--assets)
+      * [7.1.2. Template Placeholders](#712-template-placeholders)
+      * [7.1.3. Pre-Report Script Integration](#713-pre-report-script-integration)
+      * [7.1.4. Handling Failures](#714-handling-failures)
+   * [7.2. Combined Report Generation (`generate_combined_report.py`)](#72-combined-report-generation-generate_combined_reportpy)
+      * [7.2.1. Report Types](#721-report-types)
+      * [7.2.2. Comparison Assets](#722-comparison-assets)
+   * [7.3. Godbolt Integration](#73-godbolt-integration)
+* [8. Extensibility Guide](#8-extensibility-guide)
+   * [8.1. Adding a New Profiler](#81-adding-a-new-profiler)
+   * [8.2. Adding Custom Analysis/Plots](#82-adding-custom-analysisplots)
+   * [8.3. Supporting New Platforms](#83-supporting-new-platforms)
 
 ---
 
@@ -72,7 +67,7 @@ To provide a structured C++ benchmarking repository using Google Benchmark and C
     *   Build Flags Identifier (e.g., `Release_O3_native`, `Debug_O0_avx2`). This combines CMake Build Type (`Release`, `Debug`, `RelWithDebInfo`) with key optimization/architecture flags.
     *   Metadata Hash: A hash generated from the combination of platform, compiler, build flags, and timestamp, used to uniquely identify experiment runs.
 *   **Result:** Raw output data collected from running one experiment under a specific configuration. Stored under `results/` following a path derived from the Configuration. See [Section 3](#3-directory-structure).
-*   **Report:** Human-readable Markdown files generated from one or more results. Stored under `reports/`, mirroring the `results/` structure and including generated assets like plots. See [Section 7.1](#711-report-structure--assets).
+*   **Report:** Human-readable Markdown files generated from one or more results. Stored under `reports/`, mirroring the `results/` structure and including generated assets like plots. See [Section 7.1.1](#711-report-structure--assets).
 
 ---
 
@@ -100,7 +95,7 @@ BenchEverything/
 │       ├── CMakeLists.txt # Defines target, finds/links deps (uses find_package/FetchContent)
 │       ├── src/ # C++ source files for the benchmark
 │       │   └── benchmark.cpp
-│       ├── README.md.template # Report template with placeholders (see Section 7.3)
+│       ├── README.md.template # Report template with placeholders (see Section 7.1.2)
 │       ├── exp_config.json # (Optional) Overrides for global settings (flags, perf events)
 │       └── pre_report.py # (Optional) Python script to generate plots/figures from results
 ├── build/ # === Build Artifacts === (Generally gitignored)
@@ -169,332 +164,824 @@ The hash is generated from a combination of:
 - Build configuration (flags, optimization level)
 - Other relevant metadata
 
+For details on how this hash is calculated, see [`generate_metadata_hash()`](scripts/run_benchmarks.py) in the source code.
+
 ---
 
-## 4. Workflow
+## 4. Quickstart Guide
 
-The typical process for adding and running benchmarks:
+This section provides the essential steps to get started with BenchEverything. For detailed explanations, refer to the specific sections linked throughout.
 
-### 4.1. Add Experiment
+### 4.1. Prerequisites
 
-1. Create the directory `experiments/<experiment_name>/`.
-   - Look at existing experiments like `int_addition` or `float_addition` for reference
-   - Use a descriptive name that reflects what you're measuring
+Before using BenchEverything, ensure you have:
 
-2. Write C++ benchmark code in `experiments/<experiment_name>/src/`:
-   - Use Google Benchmark macros (`BENCHMARK`, `BENCHMARK_F`) 
-   - Always prefix benchmark functions with `BM_` (e.g., `BM_MyFunction`) for automatic detection
-   - Use `benchmark::DoNotOptimize()` to prevent compiler from optimizing away your benchmark code
-   - Example:
-     ```cpp
-     #include <benchmark/benchmark.h>
-     
-     static void BM_MyOperation(benchmark::State& state) {
-       for (auto _ : state) {
-         // Code to benchmark
-         int result = operation();
-         benchmark::DoNotOptimize(result);
-       }
-     }
-     BENCHMARK(BM_MyOperation);
-     ```
+* **Git**: For version control
+* **Python 3.6+**: Required for running the scripts
+* **CMake 3.15+**: For building the benchmark projects
+* **C++ Compiler**: GCC, Clang, or MSVC (as specified in your configuration)
+* **Python Packages**: Install with `pip install -r scripts/requirements.txt`
+* **Platform-specific Tools**: (Optional) `perf` on Linux for performance counters
 
-3. Create `experiments/<experiment_name>/CMakeLists.txt`:
-   - Name your benchmark executable consistently (typically `<experiment_name>_benchmark`)
-   - Use the helper function from BenchmarkUtils.cmake:
-     ```cmake
-     add_benchmark_experiment(
-       NAME my_experiment
-       SOURCES src/benchmark.cpp
-       # Optional: LIBRARIES dependency1 dependency2
-     )
-     ```
+For virtual environment users (recommended):
+```bash
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+pip install -r scripts/requirements.txt
+```
 
-4. Create `experiments/<experiment_name>/README.md.template` with explanatory text and [Placeholders](#713-template-placeholders).
+### 4.2. Running Existing Benchmarks
 
-5. Add your experiment to the configuration file:
-   - Edit `scripts/config/benchmark_config.json` and add to the `experiments` array:
-     ```json
-     {
-       "name": "my_experiment",
-       "benchmark_executable": "my_experiment_benchmark",
-       "template_file": "experiments/my_experiment/README.md.template",
-       "output_file": "reports/my_experiment_report.md"
-     }
-     ```
+To run all existing benchmarks with default settings:
 
-6. Add your experiment to the root CMakeLists.txt:
-   ```cmake
-   add_subdirectory(experiments/my_experiment)
+```bash
+# Clone the repository
+git clone <repository_url> BenchEverything
+cd BenchEverything
+
+# Run benchmarks with default configuration
+python scripts/run_benchmarks.py
+```
+
+You can customize which benchmarks to run and how:
+
+```bash
+# Run specific experiments
+python scripts/run_benchmarks.py --experiments int_addition,float_addition
+
+# Run only with a specific compiler
+python scripts/run_benchmarks.py --compiler gcc
+
+# Run with specific build flags
+python scripts/run_benchmarks.py --build-flags Debug_O0
+
+# Force re-run (overwrite existing results)
+python scripts/run_benchmarks.py --force
+
+# Use incremental build (faster for development)
+python scripts/run_benchmarks.py --incremental-build
+```
+
+The available experiments are defined in [`scripts/config/benchmark_config.json`](#62-configuration-file-benchmark_configjson). For more options, see [Running Benchmarks](#6-running-benchmarks-run_benchmarkspy).
+
+### 4.3. Creating a New Benchmark
+
+To create a new benchmark experiment:
+
+1. **Create directory structure**:
    ```
-7.  *(Optional)* Create `experiments/<experiment_name>/exp_config.json` to override global run configurations (e.g., add specific compiler flags, change perf events) for this experiment only. See [Section 5.4](#54-overrides-exp_configjson).
-8.  *(Optional)* Create `experiments/<experiment_name>/pre_report.py` if you need custom plots or data processing during report generation. See [Section 7.1.2](#712-pre_reportpy-integration).
-9. Test your experiment:
+   experiments/my_benchmark/
+   ├── CMakeLists.txt
+   ├── README.md.template
+   └── src/
+       └── benchmark.cpp
+   ```
+
+2. **Write benchmark code** in `experiments/my_benchmark/src/benchmark.cpp`:
+   ```cpp
+   #include <benchmark/benchmark.h>
+
+   static void BM_MyBenchmark(benchmark::State& state) {
+     for (auto _ : state) {
+       // Code to benchmark
+       int result = /* operation */;
+       benchmark::DoNotOptimize(result);
+     }
+   }
+   BENCHMARK(BM_MyBenchmark);
+
+   BENCHMARK_MAIN();
+   ```
+
+3. **Create CMakeLists.txt**:
+   ```cmake
+   add_benchmark_experiment(
+     NAME my_benchmark
+     SOURCES src/benchmark.cpp
+   )
+   ```
+
+4. **Add template for report** in `README.md.template`:
+   ```markdown
+   # My Benchmark
+
+   ## Results
+   {{GBENCH_TABLE}}
+
+   ## Assembly
+   {{ASSEMBLY_LINKS}}
+   ```
+
+5. **Add to configuration** in `scripts/config/benchmark_config.json`:
+   ```json
+   {
+     "name": "my_benchmark",
+     "benchmark_executable": "my_benchmark_benchmark",
+     "template_file": "experiments/my_benchmark/README.md.template"
+   }
+   ```
+
+6. **Run your benchmark**:
+   ```bash
+   python scripts/run_benchmarks.py --experiments my_benchmark
+   ```
+
+For detailed explanation of each step, see [Creating and Managing Experiments](#5-creating-and-managing-experiments).
+
+### 4.4. Generating Reports
+
+After running benchmarks, generate reports from the results:
+
+```bash
+# Generate report for a specific result
+python scripts/generate_report.py --result-dir results/darwin-arm64-Apple-M3-Pro/clang-20.1.2/Release_O3/0528a2c3/int_addition
+
+# Generate reports for all results
+python scripts/generate_report.py
 ```
-python scripts/run_benchmarks.py --experiments my_experiment -compiler gcc --force 
+
+For comparing results across configurations:
+
+```bash
+# Compare GCC vs. Clang
+python scripts/generate_combined_report.py --type comparison --compare-configs gcc,clang
+
+# Compare optimization levels
+python scripts/generate_combined_report.py --type comparison --compare-flags Debug_O0,Release_O3
 ```
 
-### 4.2. Configure Run
+The generated reports will be in the `reports/` directory. For more options, see [Generating Reports](#7-generating-reports).
 
-Modify `scripts/run_benchmarks.py` or its associated configuration file (e.g., `scripts/config/benchmark_config.json`) to define:
-*   **Target Configurations:** A list or matrix of compilers, build flag sets (e.g., `Release_O3_native`), platforms.
-*   **Target Experiments:** Which experiments to run (`--all`, `--experiments <name1>,<name2>`, `--experiments-matching <pattern>`).
-*   **Global Settings:** Default Google Benchmark arguments (`--benchmark_repetitions`), default `perf` events.
-*   **Behavior Flags:** Whether to force re-runs (`--force`), use incremental builds (`--incremental-build`).
+### 4.5. Cross-Machine Workflow
 
-### 4.3. Run Benchmarks (`run_benchmarks.py`)
+To benchmark across different machines or environments:
 
-Execute the main script: `python scripts/run_benchmarks.py [options]`
+1. **Develop and commit** your benchmark code on one machine
+2. **Push to a shared repository** to distribute the code
+3. **Pull and run on each target machine**:
+   ```bash
+   git pull
+   python scripts/run_benchmarks.py
+   git add results/ reports/
+   git commit -m "Add results from machine X"
+   git push
+   ```
+4. **Generate comparison reports** on any machine with access to all results:
+   ```bash
+   git pull
+   python scripts/generate_combined_report.py --type comparison --compare-platforms linux-x86_64,darwin-arm64
+   ```
 
-The script performs the following for each selected (experiment, configuration) pair:
-
-1.  **Identify Context:** Determines the current Git hash and combines it with the configuration to define the target `build/`, `results/`, and `reports/` paths.
-2.  **Check Existence:** Looks for the target `results/.../<git_hash>/<exp_name>` directory. If it exists and `--force` is **not** used, it prompts the user to skip or overwrite. If `--force` is used, it proceeds.
-3.  **Merge Config:** Loads the global configuration, checks for `experiments/<exp_name>/exp_config.json`, and merges/overrides settings (flags, perf events) to get the final configuration for this run.
-4.  **Prepare Build:**
-    *   Selects the appropriate CMake [Toolchain File](#52-toolchain-files) based on the configuration.
-    *   Unless `--incremental-build` is specified, it cleans the corresponding `build/...` directory.
-    *   Invokes CMake: `cmake -S . -B <build_dir> -DCMAKE_TOOLCHAIN_FILE=<path> -DCMAKE_BUILD_TYPE=<Type> -DCUSTOM_CXX_FLAGS="<flags>" ...`
-5.  **Build:** Compiles *only* the target experiment: `cmake --build <build_dir> --target <exp_name>_benchmark`. It logs build errors and continues to the next experiment/configuration if a build fails.
-6.  **List Tests:** Runs the compiled benchmark with `--benchmark_list_tests=true` (or parses initial JSON) to get the exact names of registered benchmark functions (crucial for [Assembly Extraction](#63-assembly)).
-7.  **Run & Profile:**
-    *   Executes the benchmark, saving Google Benchmark JSON output: `<executable> --benchmark_format=json --benchmark_out=<results/.../benchmark_output.json> [gbench_args]`.
-    *   If on Linux, wraps the execution with `perf stat`: `perf stat -o <results/.../perf_stat.log> -e <event_list> <executable> ...`. Logs errors if `perf` fails (e.g., invalid event) but continues execution.
-    *   Extracts assembly code for listed benchmark functions using `objdump`. See [Section 6.3](#63-assembly).
-    *   Saves all outputs and detailed `metadata.json` ([Section 6.4](#64-metadata-metadatajson)) to the `results/.../<git_hash>/<exp_name>/` directory.
-8.  Logs runtime errors/crashes and continues execution.
-
-### 4.4. Generate Single Report (`generate_report.py`)
-
-Execute the single report generation script: `python scripts/generate_report.py [options]`
-
-This script focuses on generating a report for **one specific experiment result**.
-
-Options control which result to process (e.g., `--result-dir <path_to_result>`).
-
-1.  **Identify Result:** Takes the path to a specific `results/.../<exp_name>` directory as input.
-2.  **Determine Paths:** Calculate the corresponding report path `reports/.../<exp_name>/` and asset path `.../assets/`. Create directories if needed.
-3.  **Run Pre-Report Script:** If `experiments/<exp_name>/pre_report.py` exists, execute it, passing the results directory and the target `assets/` directory. See [Section 7.1.2](#712-pre_reportpy-integration).
-4.  **Parse Data:** Read `benchmark_output.json`, `perf_stat.log`, `metadata.json`.
-5.  **Scan Assets:** List files in the `assets/` directory generated by `pre_report.py`.
-6.  **Populate Template:** Process `experiments/<exp_name>/README.md.template`, replacing [Placeholders](#713-template-placeholders) with parsed data, formatted tables, links to assembly, and Markdown for discovered/referenced assets. See [Section 7.1.4](#714-handling-failures) for error handling.
-7.  Write the final report to `reports/.../<exp_name>/report.md`.
-
-### 4.5. Generate Combined Reports (`generate_combined_report.py`)
-
-Execute the combined report generation script: `python scripts/generate_combined_report.py [options]`
-
-This script generates reports that aggregate data from **multiple** experiment results, such as summaries or comparisons.
-
-Options control which results to aggregate (`--results-base-dir`, `--hashes`, `--configs`, `--experiments`) and the type of report (`--type summary|comparison`).
-
-1.  **Scan Results:** Finds relevant `results/.../<exp_name>` directories based on filters provided (e.g., across multiple hashes, configs, or experiments).
-2.  **Aggregate Data:** Reads data (`metadata.json`, `benchmark_output.json`, etc.) from all selected result directories.
-3.  **Perform Analysis (if Comparison):** For comparison reports, calculate differences, ratios, etc., between the selected result sets.
-4.  **Generate Combined Assets:** May generate new plots or data files summarizing or comparing the aggregated data. These are typically saved to specific locations like `reports/comparisons/assets/` or within the summary report's directory.
-5.  **Populate Template:** Uses a dedicated template (e.g., `scripts/templates/summary_report.md.template`, `scripts/templates/comparison_report.md.template`) and populates it with the aggregated/compared data and links to generated assets.
-6.  **Write Report:** Saves the final summary or comparison report (e.g., `reports/.../<git_hash>/ALL_EXPERIMENTS_SUMMARY.md`, `reports/comparisons/<comparison_name>.md`).
-
-### 4.6. Cross-Machine/Compiler Workflow
-
-1.  Develop/modify experiments, commit changes, push to Git remote.
-2.  On Machine A (e.g., Linux/GCC): `git pull`, configure `run_benchmarks.py` for GCC targets, run it. Run `generate_report.py` for individual results if desired. Commit/push results & reports.
-3.  On Machine B (e.g., Linux/Clang or Windows/MSVC): `git pull`, configure `run_benchmarks.py` for Clang/MSVC targets, run it. Run `generate_report.py` for individual results if desired. Commit/push results & reports.
-4.  Locally (or anywhere with access to all results): `git pull`.
-    *   Run `generate_report.py --result-dir <path>` to view/regenerate any specific single report.
-    *   Run `generate_combined_report.py` with appropriate filters (`--compare-configs`, `--compare-hashes`) to create summary or comparison reports spanning the collected data. Commit/push combined reports.
+This workflow allows tracking performance across different hardware, compilers, and environments. See [Section 6.6](#66-result-directory-structure) for details on how results are organized.
 
 ---
 
-## 5. Configuration (`run_benchmarks.py`)
+## 5. Creating and Managing Experiments
 
-The `scripts/run_benchmarks.py` script (config can be loaded from YAML/JSON in `scripts/config/`) is the central point for controlling benchmark execution.
+This section provides comprehensive details on how to create and manage benchmark experiments in BenchEverything.
 
-### 5.1. Responsibilities
+### 5.1. Experiment Structure
 
-*   Parsing command-line arguments (`--experiments`, `--configs`, `--force`, `--incremental-build`, etc.).
-*   Defining the matrix of configurations (compilers, build flags, platforms) to run.
-*   Selecting experiments based on user input.
-*   Merging global settings with per-experiment overrides ([Section 5.4](#54-overrides-exp_configjson)).
-*   Selecting and applying the correct CMake [Toolchain File](#52-toolchain-files).
-*   Managing the [Build Process](#53-build-management) (clean vs. incremental).
-*   Invoking CMake, the build tool, the benchmark executable, and profiling tools (`perf`).
-*   Orchestrating the collection and storage of results.
+Each experiment in BenchEverything follows a consistent directory structure:
 
-### 5.2. Toolchain Files
-
-Using CMake toolchain files (e.g., `cmake/toolchains/gcc11.cmake`) is the recommended approach for specifying compilers and related settings. `run_benchmarks.py` should select the appropriate file based on the target configuration and pass it to CMake via `-DCMAKE_TOOLCHAIN_FILE=...`. This provides a robust way to manage different compiler versions and cross-compilation setups.
-
-Example `gcc11.cmake`:
-```cmake
-set(CMAKE_SYSTEM_NAME Linux)
-set(CMAKE_C_COMPILER /usr/bin/gcc-11)
-set(CMAKE_CXX_COMPILER /usr/bin/g++-11)
-# Add other flags, sysroot settings if needed
+```
+experiments/<experiment_name>/
+├── CMakeLists.txt                 # Defines the benchmark executable
+├── README.md.template             # Template for the generated report
+├── src/                           # Source code directory
+│   └── benchmark.cpp              # Main benchmark code
+├── exp_config.json                # (Optional) Experiment-specific configuration
+└── pre_report.py                  # (Optional) Custom analysis script
 ```
 
-### 5.3. Build Management
+This structure isolates each benchmark experiment, making it easy to understand, modify, and maintain independently.
 
-*   **Default:** Clean builds. Before running CMake for a configuration, `run_benchmarks.py` should remove the corresponding `build/<platform>/<compiler>/<flags>/` directory to ensure no artifacts from previous runs interfere.
-*   **Option:** `--incremental-build` flag can be provided to skip the cleaning step, allowing CMake to reuse existing artifacts for faster iteration during development. Use with caution, as it may hide configuration issues.
-*   Build Directory: `build/` follows the same hierarchy as `results/` and `reports/`.
+### 5.2. Writing Benchmark Code
 
-### 5.4. Overrides (`exp_config.json`)
+The benchmark code should use the [Google Benchmark](https://github.com/google/benchmark) library to measure performance. Here's a template for a basic benchmark:
 
-An optional `experiments/<experiment_name>/exp_config.json` file allows customizing the run for a specific experiment. `run_benchmarks.py` merges this with the global configuration before invoking tools.
+```cpp
+#include <benchmark/benchmark.h>
 
-Example `exp_config.json`:
+// Simple benchmark function
+static void BM_Example(benchmark::State& state) {
+  // Setup code here (not measured)
+  
+  for (auto _ : state) {
+    // Code to benchmark goes here
+    // This will be measured repeatedly
+    
+    // Prevent compiler from optimizing away the code
+    benchmark::DoNotOptimize(result);
+  }
+  
+  // Optional: report custom metrics
+  state.SetItemsProcessed(state.iterations() * items);
+  state.SetBytesProcessed(state.iterations() * bytes);
+}
+
+// Register the benchmark
+BENCHMARK(BM_Example);
+
+// Optional: Parameterized benchmark
+BENCHMARK(BM_Example)->Arg(8)->Arg(64)->Arg(512);
+
+// Optional: Range of parameters
+BENCHMARK(BM_Example)->Range(8, 8<<10);
+
+// Add main() function
+BENCHMARK_MAIN();
+```
+
+#### Key Points:
+
+1. **Naming Convention**:
+   - **IMPORTANT**: Prefix benchmark functions with `BM_` (e.g., `BM_Example`).
+   - This prefix is used for automatic detection in [`_get_benchmark_functions`](scripts/run_benchmarks.py).
+
+2. **Benchmark Structure**:
+   - Setup code outside the loop (not measured)
+   - Code to benchmark inside the loop (measured)
+   - Use `benchmark::DoNotOptimize()` to prevent compiler optimizing away code
+   - Register benchmarks with `BENCHMARK()`
+
+3. **Additional Features**:
+   - Parameterized benchmarks with `->Arg()` or `->Range()`
+   - Custom metrics with `state.SetItemsProcessed()` or `state.SetBytesProcessed()`
+   - Multiple benchmark functions in one file
+
+4. **Function Detection**:
+   - BenchEverything uses `--benchmark_list_tests=true` to automatically detect benchmark functions
+   - The `_get_benchmark_functions` method in [run_benchmarks.py](scripts/run_benchmarks.py) handles this
+
+### 5.3. CMake Integration
+
+Each experiment needs a `CMakeLists.txt` file that defines how to build the benchmark executable. The recommended approach is to use the `add_benchmark_experiment()` function defined in [cmake/BenchmarkUtils.cmake](cmake/BenchmarkUtils.cmake):
+
+```cmake
+add_benchmark_experiment(
+  NAME my_experiment
+  SOURCES src/benchmark.cpp
+  # Optional parameters:
+  # INCLUDE_DIRS additional/include/dirs
+  # LIBRARIES dependency1 dependency2
+  # COMPILE_OPTIONS -Wall -Wextra
+  # COMPILE_DEFINITIONS MY_DEFINE=1
+)
+```
+
+This function:
+1. Creates a target named `my_experiment_benchmark`
+2. Adds the specified sources
+3. Links against Google Benchmark
+4. Applies any specified include directories, libraries, compile options, and definitions
+
+#### Remember:
+- The executable name (`my_experiment_benchmark`) must match what you specify in [`scripts/config/benchmark_config.json`](scripts/config/benchmark_config.json)
+- Add your experiment directory to the root `CMakeLists.txt` with `add_subdirectory(experiments/my_experiment)`
+
+### 5.4. Experiment-Specific Configuration
+
+You can customize how an experiment is built and run by creating an optional `exp_config.json` file in the experiment directory:
+
 ```json
 {
   "cmake_flags": "-DSPECIAL_FEATURE=ON",
-  "cxx_flags": "-Wextra -Werror",
+  "cxx_flags": "-Wextra -Werror -funroll-loops",
   "perf_events": ["cycles", "instructions", "cache-references", "cache-misses"],
-  "gbench_args": "--benchmark_min_time=1.0"
+  "gbench_args": "--benchmark_min_time=2.0 --benchmark_repetitions=5"
 }
 ```
 
+This configuration:
+- Is loaded by `run_benchmarks.py` with [`get_experiment_config()`](scripts/run_benchmarks.py)
+- Overrides global settings for this specific experiment
+- Allows customizing compilation, benchmark parameters, and data collection
+
+Available options include:
+- `cmake_flags`: Additional CMake flags for this experiment
+- `cxx_flags`: Additional compiler flags
+- `perf_events`: Custom performance events to collect (Linux only)
+- `gbench_args`: Arguments passed to the Google Benchmark executable
+
+### 5.5. Pre-Report Scripts
+
+For more advanced analysis of your benchmark results, you can create a `pre_report.py` script in your experiment directory. This script is executed by `generate_report.py` before generating the final report.
+
+Example `pre_report.py`:
+
+```python
+#!/usr/bin/env python3
+
+import argparse
+import json
+import matplotlib.pyplot as plt
+import numpy as np
+import os
+from pathlib import Path
+
+def main():
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description='Generate plots for the benchmark results')
+    parser.add_argument('--results-dir', required=True, help='Path to the results directory')
+    parser.add_argument('--output-dir', required=True, help='Path to save generated assets')
+    args = parser.parse_args()
+    
+    results_dir = Path(args.results_dir)
+    output_dir = Path(args.output_dir)
+    
+    # Ensure output directory exists
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Load benchmark results
+    benchmark_file = results_dir / "benchmark_output.json"
+    if not benchmark_file.exists():
+        print(f"Benchmark results file not found: {benchmark_file}")
+        return
+    
+    with open(benchmark_file, 'r') as f:
+        data = json.load(f)
+    
+    # Create a plot
+    benchmarks = data.get('benchmarks', [])
+    if not benchmarks:
+        print("No benchmark data found")
+        return
+    
+    names = [b['name'] for b in benchmarks]
+    times = [b['real_time'] for b in benchmarks]
+    
+    plt.figure(figsize=(10, 6))
+    plt.bar(names, times)
+    plt.title('Benchmark Performance')
+    plt.ylabel('Time (ns)')
+    plt.xlabel('Benchmark')
+    plt.xticks(rotation=45, ha='right')
+    plt.tight_layout()
+    
+    # Save the plot to the output directory
+    plt.savefig(output_dir / "performance_plot.png", dpi=300)
+    print(f"Plot saved to {output_dir / 'performance_plot.png'}")
+
+if __name__ == "__main__":
+    main()
+```
+
+This script:
+1. Reads the benchmark results from `benchmark_output.json`
+2. Creates a visualization (in this case, a bar chart of performance)
+3. Saves the plot to the `assets/` directory in the report
+
+To use this in your report template:
+```markdown
+## Performance Visualization
+{{FIGURE:performance_plot.png}}
+```
+
+The integration between `pre_report.py` and report generation is handled by [`generate_report.py`](scripts/generate_report.py), which runs the script with the appropriate directories and then processes the template placeholders.
+
 ---
 
-## 6. Data Collection Details
+## 6. Running Benchmarks (`run_benchmarks.py`)
 
-The `run_benchmarks.py` script orchestrates the collection of various data points into the `results/.../<git_hash>/<exp_name>/` directory.
+The `scripts/run_benchmarks.py` script is the central point for controlling benchmark execution. It handles building experiments, running benchmarks, and collecting results.
 
-### 6.1. Google Benchmark
+### 6.1. Command-Line Options
 
-*   Executed with `--benchmark_format=json --benchmark_out=<path>/benchmark_output.json`.
-*   Additional arguments (e.g., `--benchmark_repetitions`) can be passed via global config or `exp_config.json`.
-*   The JSON output contains detailed timing information (mean, median, stddev), iterations, time unit, etc., for each benchmark run.
+`run_benchmarks.py` provides several command-line options to customize benchmark execution:
 
-### 6.2. Perf (Linux)
+```bash
+python scripts/run_benchmarks.py [options]
+```
 
-*   Benchmark execution is wrapped: `perf stat -o <path>/perf_stat.log -e <event_list> <executable> [args]`.
-*   The `<event_list>` is configurable globally or via `exp_config.json`. Defaults might include `cycles,instructions,branch-instructions,branch-misses`.
-*   If `perf stat` fails (e.g., invalid event name, insufficient permissions), the error is logged to the console, but `run_benchmarks.py` continues. The `perf_stat.log` might be missing or contain error messages. This failure is noted during [Report Generation](#714-handling-failures).
-*   Raw `perf record` data (`perf.data`) is **not** typically saved due to size, unless specifically configured for deep-dive analysis.
+Key options include:
 
-### 6.3. Assembly
+| Option | Description |
+|--------|-------------|
+| `--config PATH` | Path to a custom configuration file (default: `scripts/config/benchmark_config.json`) |
+| `--compiler {gcc,clang,all}` | Compiler to use (default: `all`) |
+| `--experiments LIST` | Comma-separated list of experiments to run (default: all experiments in config) |
+| `--build-flags FLAGS` | Build flags identifier (e.g., `Release_O3`, `Debug_O0`) (default: `Release_O3`) |
+| `--force` | Force re-run of benchmarks even if results exist |
+| `--incremental-build` | Use incremental build instead of clean build (default: false) |
 
-1.  **Identify Functions:** After build, run `<executable> --benchmark_list_tests=true` or parse the `benchmark_output.json` to get the exact list of registered benchmark names (e.g., `BM_MyFunction/16`, `MyFixture_Test/BM_Variant/process_time`).
-2.  **Disassemble:** Run `objdump -d --no-show-raw-insn -C <executable_path> | c++filt > full_disassembly.txt` (optional, for debugging).
-3.  **Extract Snippets:** Use scripting (Python within `run_benchmarks.py`) to parse the `objdump` output. For each identified benchmark function name, find its corresponding label (e.g., `_Z12BM_MyFunction...:` or the demangled name) and extract the assembly lines until the next function label or `.size` directive. Save each snippet to `assembly/<BM_Function_Name>.s`. Handle potential name mangling differences.
+Example usage:
 
-### 6.4. Metadata (`metadata.json`)
+```bash
+# Run specific experiments with GCC and Debug_O0 flags
+python scripts/run_benchmarks.py --compiler gcc --experiments int_addition,float_addition --build-flags Debug_O0
 
-A crucial file capturing the execution context:
+# Force re-run of all experiments with all compilers
+python scripts/run_benchmarks.py --force
+
+# Use incremental build for faster development iteration
+python scripts/run_benchmarks.py --incremental-build
+```
+
+For the complete list of options, run:
+```bash
+python scripts/run_benchmarks.py --help
+```
+
+### 6.2. Configuration File (`benchmark_config.json`)
+
+The `scripts/config/benchmark_config.json` file defines the available compilers and experiments:
+
 ```json
 {
-  "timestamp_iso": "2023-10-27T10:30:00Z",
-  "git_commit_short": "abc1234",
-  "git_commit_full": "abc1234def5678...",
-  "platform_id": "linux-x86_64",
-  "compiler_id": "gcc-11.2.0",
-  "build_flags_id": "Release_O3_native",
+  "compilers": [
+    {
+      "name": "gcc",
+      "toolchain_file": "cmake/toolchains/gcc.cmake",
+      "build_dir": "build/gcc"
+    },
+    {
+      "name": "clang",
+      "toolchain_file": "cmake/toolchains/clang.cmake",
+      "build_dir": "build/clang"
+    }
+  ],
+  "experiments": [
+    {
+      "name": "int_addition",
+      "benchmark_executable": "int_addition_benchmark",
+      "template_file": "experiments/int_addition/README.md.template",
+      "output_file": "reports/int_addition_report.md"
+    },
+    {
+      "name": "float_addition",
+      "benchmark_executable": "float_addition_benchmark",
+      "template_file": "experiments/float_addition/README.md.template",
+      "output_file": "reports/float_addition_report.md"
+    }
+  ]
+}
+```
+
+The configuration file has two main sections:
+
+1. **Compilers**: Defines the available compilers and their toolchain files.
+   - `name`: The compiler identifier (used with `--compiler`)
+   - `toolchain_file`: Path to the CMake toolchain file
+   - `build_dir`: Path to the build directory (used in the older directory structure)
+
+2. **Experiments**: Defines the available benchmarks.
+   - `name`: The experiment identifier (used with `--experiments`)
+   - `benchmark_executable`: The name of the executable to run
+   - `template_file`: Path to the report template
+   - `output_file`: Path to the generated report (used in the older directory structure)
+
+You can create custom configuration files and use them with `--config`.
+
+### 6.3. Build Management
+
+The `run_benchmarks.py` script manages the build process for each experiment:
+
+1. **Clean Build (Default)**:
+   - Removes the existing build directory
+   - Ensures a fresh build with no artifacts from previous runs
+   - Provides maximum reproducibility
+   - Slower as it rebuilds everything each time
+
+2. **Incremental Build (Optional)**:
+   - Preserves the existing build directory
+   - Reuses existing build artifacts
+   - Faster for iterative development
+   - May hide configuration issues
+
+The build directory follows the structure:
+```
+build/<detailed_platform_id>/<detailed_compiler_id>/<build_flags_id>/
+```
+
+Where:
+- `detailed_platform_id`: Includes OS, CPU architecture, and CPU model (e.g., `darwin-arm64-Apple-M3-Pro`)
+- `detailed_compiler_id`: Includes compiler name and version (e.g., `clang-15.0.0`)
+- `build_flags_id`: Optimization level and other compiler flags (e.g., `Release_O3`)
+
+### 6.4. Toolchain Files
+
+Toolchain files (in `cmake/toolchains/`) specify which compilers and compiler options to use. They are passed to CMake using the `-DCMAKE_TOOLCHAIN_FILE` option.
+
+Example `cmake/toolchains/gcc.cmake`:
+```cmake
+set(CMAKE_C_COMPILER "gcc")
+set(CMAKE_CXX_COMPILER "g++")
+set(CMAKE_AR "gcc-ar")
+set(CMAKE_RANLIB "gcc-ranlib")
+```
+
+Example `cmake/toolchains/clang.cmake`:
+```cmake
+set(CMAKE_C_COMPILER "clang")
+set(CMAKE_CXX_COMPILER "clang++")
+```
+
+You can create additional toolchain files for different compiler versions or platforms.
+
+### 6.5. Data Collection
+
+The `run_benchmarks.py` script collects several types of data during benchmark execution:
+
+#### 6.5.1. Google Benchmark Output
+
+The benchmark executable is run with `--benchmark_format=json` to generate a structured JSON output file:
+
+```bash
+<benchmark_executable> --benchmark_format=json --benchmark_out=<results_dir>/benchmark_output.json
+```
+
+This JSON file contains detailed performance measurements for each benchmark, including:
+- Real time and CPU time (mean, median, standard deviation)
+- Number of iterations
+- Time unit
+- Custom metrics (items/second, bytes/second, etc.)
+
+#### 6.5.2. Perf Stats (Linux only)
+
+On Linux systems, the script collects performance counter data using `perf stat`:
+
+```bash
+perf stat -o <results_dir>/perf_stat.log -e cycles,instructions,branch-instructions,branch-misses <benchmark_executable> ...
+```
+
+The performance events to collect can be customized globally or per experiment in `exp_config.json`.
+
+#### 6.5.3. Assembly
+
+The script extracts assembly code for each benchmark function to provide insights into the generated code:
+
+1. **Identifying Functions**: Uses `--benchmark_list_tests=true` to get the list of benchmark functions
+2. **Extracting Assembly**: Uses `objdump` or similar tools to extract the assembly for each function
+3. **Saving Snippets**: Saves the assembly code to `<results_dir>/assembly/<function_name>.s`
+
+#### 6.5.4. Metadata
+
+The script generates a `metadata.json` file containing detailed information about the benchmark run:
+
+```json
+{
+  "timestamp_iso": "2023-10-27T15:42:30.123456",
+  "metadata_hash": "0528a2c3",
+  "metadata_source": "system=darwin:machine=arm64:cpu=Apple-M3-Pro:compiler_name=clang:compiler_version=14.0.0:build_flags_id=Release_O3",
+  "detailed_platform_id": "darwin-arm64-Apple-M3-Pro",
+  "detailed_compiler_id": "clang-20.1.2",
+  "platform_id": "darwin-arm64",
+  "compiler_id": "clang",
+  "compiler_version": "20.1.2",
+  "build_flags_id": "Release_O3",
+  "cpu_model": "Apple-M3-Pro",
   "environment": {
-    "uname": "Linux hostname 5.15.0-...",
-    "cpu_info": "Intel(R) Core(TM) i7-...",
-    "compiler_version": "g++ (Ubuntu 11.2.0-...) 11.2.0",
-    "cmake_version": "3.22.1",
-    "glibc_version": "ldd (Ubuntu GLIBC 2.35-...)"
+    "platform": "Darwin",
+    "platform_release": "23.4.0",
+    "platform_version": "Darwin Kernel Version 23.4.0...",
+    "architecture": "arm64",
+    "processor": "arm",
+    "python_version": "3.11.6"
   },
   "config": {
     "cmake_build_type": "Release",
-    "cxx_flags_used": "-O3 -march=native -DNDEBUG",
-    "toolchain_file": "cmake/toolchains/gcc11.cmake",
-    "perf_command": "perf stat -e cycles,instructions ...",
-    "gbench_command": "<executable> --benchmark_format=json ..."
-  },
-  "overrides_applied": { // Content from exp_config.json if used
-    "perf_events": ["cache-references", "cache-misses"]
+    "cxx_flags_used": "-std=c++20 -O3",
+    "compiler_version": "Apple clang version 15.0.0...",
+    "toolchain_file": "cmake/toolchains/clang.cmake",
+    "gbench_command": "int_addition_benchmark --benchmark_format=json --benchmark_out=..."
   }
 }
 ```
 
-### 6.5. Data Commits
+This metadata is used to uniquely identify each benchmark run and provide context for the results.
 
-*   Raw data (`benchmark_output.json`, `perf_stat.log`, `metadata.json`, `assembly/*.s`) stored in `results/` **is intended to be committed** to Git by default.
-*   Generated reports and assets in `reports/` are also intended to be committed.
-*   Large raw files like `perf.data` or very large datasets generated by benchmarks should typically be `.gitignore`'d. Monitor repository size; consider Git LFS if `results/` becomes excessively large.
+### 6.6. Result Directory Structure
+
+The `results/` directory follows a structured hierarchy to organize benchmark results:
+
+```
+results/
+└── <detailed_platform_id>/              # e.g., darwin-arm64-Apple-M3-Pro
+    └── <detailed_compiler_id>/          # e.g., clang-20.1.2
+        └── <build_flags_id>/            # e.g., Release_O3
+            └── <metadata_hash>/         # e.g., 0528a2c3
+                └── <experiment_name>/   # e.g., int_addition
+                    ├── benchmark_output.json   # Google Benchmark output
+                    ├── metadata.json           # Run metadata
+                    ├── perf_stat.log           # Perf stats (Linux only)
+                    └── assembly/               # Assembly snippets
+                        ├── BM_Function1.s
+                        └── BM_Function2.s
+```
+
+This structure ensures that:
+1. Results from different platforms, compilers, and build configurations are kept separate
+2. Each run has a unique identifier (metadata hash)
+3. Results can be easily referenced and compared
+
+The `metadata_hash` is particularly important as it provides a concise, unique identifier for a specific combination of platform, compiler, and build settings.
 
 ---
 
-## 7. Reporting
+## 7. Generating Reports
 
-Reporting is split into two scripts: `generate_report.py` for individual results and `generate_combined_report.py` for summaries and comparisons.
+BenchEverything provides scripts to generate both individual and comparative reports from benchmark results.
 
 ### 7.1. Single Report Generation (`generate_report.py`)
 
-This script transforms the raw results of a *single* experiment run into a human-readable Markdown report.
+The `scripts/generate_report.py` script generates Markdown reports from individual benchmark results:
+
+```bash
+# Generate report for a specific result
+python scripts/generate_report.py --result-dir <path_to_result_dir>
+
+# Generate reports for all available results
+python scripts/generate_report.py
+```
+
+This script:
+1. Reads the benchmark results from the specified directory
+2. Runs any pre-report scripts (`pre_report.py`) for the experiment
+3. Processes the report template, replacing placeholders with actual data
+4. Saves the generated report to the corresponding location in the `reports/` directory
 
 #### 7.1.1. Report Structure & Assets
 
-*   Reports are generated into `reports/<platform>/<compiler>/<build_flags>/<git_hash>/<experiment_name>/`.
-*   Each report directory contains:
-    *   `report.md`: The main Markdown file.
-    *   `assets/`: A subdirectory holding figures (`.png`, `.svg`), data files (`.csv`), or other artifacts generated specifically for this report instance by `pre_report.py`.
+Generated reports are saved to:
 
-#### 7.1.2. `pre_report.py` Integration
+```
+reports/
+└── <detailed_platform_id>/
+    └── <detailed_compiler_id>/
+        └── <build_flags_id>/
+            └── <metadata_hash>/
+                └── <experiment_name>/
+                    ├── report.md           # The generated report
+                    └── assets/             # Directory for report assets
+                        ├── plot1.png
+                        └── data.csv
+```
 
-*   If an experiment has an optional `experiments/<experiment_name>/pre_report.py` script:
-    *   `generate_report.py` executes it before processing the template for that specific result.
-    *   It's called like: `python experiments/exp_A/pre_report.py --results-dir <results/.../exp_A> --output-dir <reports/.../exp_A/assets/>`
-    *   This script is responsible for reading data from the results directory and saving any generated files (plots, processed data) into the provided `assets/` directory using **predictable filenames**.
+The report structure mirrors the result directory structure, making it easy to associate reports with their corresponding results.
 
-#### 7.1.3. Template Placeholders (`README.md.template`)
+#### 7.1.2. Template Placeholders
 
-The `experiments/<experiment_name>/README.md.template` uses placeholders which `generate_report.py` replaces. The general syntax is `{{TYPE:SPECIFIER}}` or `{{TYPE}}`.
+Report templates use placeholders to insert data from the benchmark results. Placeholders have the form `{{TYPE:SPECIFIER}}` or just `{{TYPE}}`.
 
-*   **Metadata:**
-    *   `{{METADATA_TABLE}}`: Inserts a pre-formatted Markdown table summarizing key info from `metadata.json`.
-    *   `{{METADATA:<field_path>}}`: Inserts the value of a specific field from `metadata.json`. Use dot notation for nested fields (e.g., `{{METADATA:environment.cpu_info}}`, `{{METADATA:config.cxx_flags_used}}`).
-*   **Google Benchmark:**
-    *   `{{GBENCH_TABLE}}`: Inserts a pre-formatted Markdown table summarizing benchmark results from `benchmark_output.json` (e.g., name, time, stddev).
-    *   `{{GBENCH_JSON}}`: Inserts the raw JSON content within a ` ```json ... ``` ` block.
-*   **Perf:**
-    *   `{{PERF_SUMMARY}}`: Inserts a pre-formatted summary of key counters from `perf_stat.log`.
-    *   `{{PERF_LOG}}`: Inserts the raw `perf_stat.log` content within a ` ``` ... ``` ` block.
-*   **Assembly:**
-    *   `{{ASSEMBLY:<FunctionName>}}`: Inserts the assembly code snippet for the specified function (matching a filename like `<FunctionName>.s`) from `results/.../assembly/` within a ` ```asm ... ``` ` block. The `<FunctionName>` should match the base name of the `.s` file (without the extension).
-    *   `{{ASSEMBLY_LINKS}}`: Inserts Markdown links to all `.s` files found in the `results/.../assembly/` directory.
-*   **Generated Assets (from `pre_report.py`):** These placeholders find files in the corresponding `reports/.../assets/` directory.
-    *   `{{FIGURES:<glob_pattern>}}`: Finds all files matching the glob pattern (e.g., `*_plot.png`, `timing*.svg`) in the `assets/` directory and inserts Markdown image links (`![filename](assets/filename)\n`) for each.
-    *   `{{ASSETS:<glob_pattern>}}`: Finds all files matching the glob pattern (e.g., `*.csv`, `processed_*.dat`) in the `assets/` directory and inserts Markdown links (`[filename](assets/filename)\n`) for each.
-    *   `{{FIGURE:<exact_filename>}}`: Inserts a Markdown image link for one specific file (`![exact_filename](assets/exact_filename)`). Requires `pre_report.py` to generate that exact filename.
-    *   `{{ASSET:<exact_filename>}}`: Inserts a Markdown link for one specific file (`[exact_filename](assets/exact_filename)`).
+Common placeholders include:
+
+| Placeholder | Description |
+|-------------|-------------|
+| `{{GBENCH_TABLE}}` | A formatted table of Google Benchmark results |
+| `{{GBENCH_JSON}}` | The raw Google Benchmark JSON output |
+| `{{METADATA_TABLE}}` | A formatted table of metadata values |
+| `{{METADATA:field.path}}` | A specific metadata field (e.g., `{{METADATA:compiler_version}}`) |
+| `{{PERF_SUMMARY}}` | A summary of performance counter data |
+| `{{PERF_LOG}}` | The raw performance counter log |
+| `{{ASSEMBLY_LINKS}}` | Links to all assembly snippets |
+| `{{ASSEMBLY:FunctionName}}` | The assembly code for a specific function |
+| `{{FIGURE:filename.png}}` | An image from the assets directory |
+| `{{FIGURES:pattern}}` | All images matching a pattern |
+| `{{ASSET:filename.csv}}` | A link to a file in the assets directory |
+| `{{ASSETS:pattern}}` | Links to all files matching a pattern |
+
+Example template:
+
+```markdown
+# {{METADATA:experiment_name}} Benchmark Report
+
+## Environment
+
+{{METADATA_TABLE}}
+
+## Results
+
+{{GBENCH_TABLE}}
+
+## Performance Visualization
+
+{{FIGURE:performance_plot.png}}
+
+## Assembly
+
+{{ASSEMBLY_LINKS}}
+
+### BM_Function1
+
+```asm
+{{ASSEMBLY:BM_Function1}}
+```
+
+## Raw Data
+
+- [Benchmark JSON]({{ASSET:benchmark_output.json}})
+- [Performance Counters]({{ASSET:perf_stat.log}})
+```
+
+#### 7.1.3. Pre-Report Script Integration
+
+If an experiment has a `pre_report.py` script, it will be run before generating the report:
+
+```bash
+python <experiment_dir>/pre_report.py --results-dir <results_dir> --output-dir <report_dir>/assets
+```
+
+This script can generate visualizations, perform additional analysis, or extract specific data points for the report.
 
 #### 7.1.4. Handling Failures
 
-If `generate_report.py` encounters errors while processing a result:
+The report generation handles various failure cases:
 
-*   **`pre_report.py` Fails:** Logs the error, continues processing the template, and inserts a marker like `[FIGURE GENERATION FAILED: See console log]` where related `{{FIGURES:*}}` or `{{ASSETS:*}}` placeholders were.
-*   **Data Parsing Fails (JSON, Perf Log):** Logs the error, continues, and inserts a marker like `[Data Parsing Failed: Invalid JSON]` or `[Perf Data Unavailable]` where related placeholders (`{{GBENCH_TABLE}}`, `{{PERF_SUMMARY}}`, etc.) were.
-*   **Assembly Snippet Missing:** Logs the error, inserts `[Assembly Snippet Not Found: FunctionName]` for `{{ASSEMBLY:FunctionName}}`.
-*   **Specific Asset Missing:** Logs the error, inserts `[Asset Not Found: specific_name.png]` for `{{FIGURE:specific_name.png}}` or `{{ASSET:specific_name.csv}}`.
+- Missing data files: Placeholders for missing data
+- Failed pre-report script: Warning in the report
+- Invalid placeholder: Warning in the report
 
-The goal is to produce as much of the report as possible while clearly indicating missing or failed sections.
+This ensures that reports are generated even if some data is missing or processing fails.
 
 ### 7.2. Combined Report Generation (`generate_combined_report.py`)
 
-This script aggregates data from multiple results to create summary or comparison reports.
+The `scripts/generate_combined_report.py` script generates reports that compare results across different configurations:
 
-#### 7.2.1. Report Types (Summary, Comparison)
+```bash
+# Compare results between GCC and Clang
+python scripts/generate_combined_report.py --type comparison --compare-configs gcc,clang
 
-Controlled via `generate_combined_report.py --type <type>`:
+# Compare results between different optimization levels
+python scripts/generate_combined_report.py --type comparison --compare-flags Debug_O0,Release_O3
 
-*   `summary`: Generates a single file (e.g., `ALL_EXPERIMENTS_SUMMARY.md`) within a specific configuration directory (`reports/.../<git_hash>/`), summarizing key metrics across *all experiments* run for that config/hash. It reads data from multiple `results/.../<exp_name>` directories under that specific config/hash path.
-*   `comparison`: Generates reports in a dedicated `reports/comparisons/` directory. Requires additional filters to specify *which* results to compare (e.g., `--compare-configs <config1>,<config2>`, `--compare-hashes <hash1>,<hash2>`, potentially limited to specific experiments via `--experiments`). It reads data from multiple `results` directories (potentially across different configs/hashes), performs comparisons (e.g., calculating speedup/slowdown percentages), generates *new* comparative plots/tables, and populates a comparison-specific template.
+# Generate a summary report for all experiments with a specific configuration
+python scripts/generate_combined_report.py --type summary
+```
+
+This script:
+1. Reads results from multiple directories based on the comparison type
+2. Performs comparative analysis (e.g., calculating speedup/slowdown)
+3. Generates visualizations comparing the results
+4. Creates a report using a comparison template
+
+#### 7.2.1. Report Types
+
+The script supports two types of reports:
+
+1. **Summary Reports**:
+   - Summarize results for all experiments within a single configuration
+   - Provide an overview of performance metrics
+   - Identify outliers or anomalies
+
+2. **Comparison Reports**:
+   - Compare results across different configurations
+   - Visualize performance differences
+   - Calculate speedup/slowdown percentages
+   - Identify which configuration performs better for each experiment
 
 #### 7.2.2. Comparison Assets
 
-When generating comparison reports, `generate_combined_report.py` may create new assets (plots comparing performance across configurations, tables showing percentage differences). These assets are typically saved within the `reports/comparisons/assets/<comparison_name>/` directory to keep them separate from single-run assets.
+Comparison reports include visualizations and data files that compare results:
 
-#### 7.2.3. Templates for Combined Reports
+- Bar charts comparing performance metrics
+- Tables showing relative performance
+- Heatmaps highlighting significant differences
 
-`generate_combined_report.py` will likely use different, dedicated template files (e.g., stored in `scripts/templates/`) for summary and comparison reports, as the structure and required data differ significantly from the single-experiment template (`README.md.template`). These templates would use placeholders populated with aggregated or calculated data.
+These assets are saved to a dedicated directory:
+
+```
+reports/
+└── <platform>/
+    └── <compiler>/
+        └── <build_flags>/
+            └── <metadata_hash>/
+                └── comparisons/
+                    ├── gcc_vs_clang.md
+                    └── assets/
+                        └── gcc_vs_clang/
+                            ├── performance_comparison.png
+                            └── speedup_table.csv
+```
 
 ### 7.3. Godbolt Integration
 
+The reports can include links to view the code on [Godbolt Compiler Explorer](https://godbolt.org/), allowing users to interactively explore the code and its assembly.
+
+To integrate with Godbolt:
+
+1. Add a link in the report template:
+   ```markdown
+   [View on Godbolt](https://godbolt.org/#g:!((g:!((g:!((h:codeEditor,i:(filename:'benchmark.cpp',fontScale:14,fontUsePx:'0',j:1,lang:c%2B%2B,source:'{{SOURCE_CODE}}'),l:'0',n:'0',o:'C%2B%2B+source+%231',t:'0')),k:50,l:'0',n:'0',o:'',t:'0'),(g:!((h:compiler,i:(compiler:{{COMPILER_ID}},filters:(b:'0',binary:'1',commentOnly:'0',demangle:'0',directives:'0',execute:'1',intel:'0',libraryCode:'0',trim:'1'),flagsViewOpen:'1',fontScale:14,fontUsePx:'0',j:1,lang:c%2B%2B,libs:!((name:benchmark,ver:trunk)),options:'{{COMPILER_FLAGS}}',source:1),l:'0',n:'0',o:'{{COMPILER_TEXT}}',t:'0')),k:50,l:'0',n:'0',o:'',t:'0')),l:'0',n:'0',o:'',t:'0'),version:4)
+   ```
+
+2. Replace the placeholders:
+   - `{{SOURCE_CODE}}`: URL-encoded source code
+   - `{{COMPILER_ID}}`: Godbolt compiler ID (e.g., `g122` for GCC 12.2)
+   - `{{COMPILER_FLAGS}}`: Compiler flags used
+   - `{{COMPILER_TEXT}}`: Display text for the compiler
+
+Alternatively, add instructions for manual setup:
+
+```markdown
+## Godbolt Integration
+
 [View on Godbolt (Manual Setup Required)](https://godbolt.org/)
-*(Copy the C++ snippet, select the compiler version, add the google benchmark library and add the flags above in Godbolt)*
+1. Copy the benchmark code
+2. Select {{METADATA:compiler_id}} {{METADATA:compiler_version}}
+3. Add the Google Benchmark library
+4. Set compiler flags: {{METADATA:config.cxx_flags_used}}
+```
 
 ---
 
@@ -559,7 +1046,7 @@ The project is designed to be extended:
 
 3.  **Add or Use Experiments:** 
     - **Use existing experiments:** Skip directly to configuration (step 4) if you want to run existing benchmarks
-    - **Add your own:** Follow [Section 4.1](#41-add-experiment) to create a new experiment
+    - **Add your own:** Follow [Section 5.1](#51-experiment-structure) to create a new experiment
     - **View available experiments:** Check the `experiments/` directory to see what's already there
     - All experiments are automatically detected - benchmark functions are found through Google Benchmark's `--benchmark_list_tests` feature
 
@@ -570,7 +1057,7 @@ The project is designed to be extended:
       ```bash
       python scripts/run_benchmarks.py --experiments exp1,exp2 --configs gcc_release,clang_debug
       ```
-    - See [Section 5](#5-configuration-run_benchmarkspy) for complete configuration details
+    - See [Section 6](#6-running-benchmarks-run_benchmarkspy) for complete configuration details
 
 5.  **Run Benchmarks:** 
     ```bash
@@ -580,7 +1067,7 @@ The project is designed to be extended:
     - `--force`: Overwrite existing results
     - `--incremental-build`: Skip clean build step
     - `--experiments <name1>,<name2>`: Run specific experiments
-    - See [Section 4.3](#43-run-benchmarks-run_benchmarkspy) for the complete workflow
+    - See [Section 6.1](#61-command-line-options) for the complete workflow
 
 6.  **Generate Individual Reports:** 
     ```bash
@@ -598,7 +1085,7 @@ The project is designed to be extended:
     ```bash
     git add results/ reports/ && git commit -m "Run benchmarks for config X and generate reports"
     ```
-    This preserves benchmark results for [cross-machine comparisons](#46-cross-machinecompiler-workflow)
+    This preserves benchmark results for [cross-machine comparisons](#45-cross-machine-workflow)
 
 ### 9.3. Benchmarking Tips
 
