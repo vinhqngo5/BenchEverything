@@ -1,6 +1,6 @@
 {
   "context": {
-    "date": "2025-04-15T14:21:19+02:00",
+    "date": "2025-04-15T21:04:52+02:00",
     "host_name": "CM-K6R9HXDHXQ",
     "executable": "/Users/vinhq/Library/CloudStorage/OneDrive-Chalmers/Desktop/Q22025/BenchEverything/build/darwin-arm64-Apple-M3-Pro/gcc-15.0.0/Release_O3/experiments/int_addition/int_addition_benchmark",
     "num_cpus": 11,
@@ -26,7 +26,7 @@
         "num_sharing": 1
       }
     ],
-    "load_avg": [9.90039,5.99658,7.11035],
+    "load_avg": [9.72119,5.78662,5.0127],
     "library_build_type": "release"
   },
   "benchmarks": [
@@ -40,8 +40,8 @@
       "repetition_index": 0,
       "threads": 1,
       "iterations": 1000000000,
-      "real_time": 2.7865395800017723e-01,
-      "cpu_time": 2.7863999999999978e-01,
+      "real_time": 2.9925262500182725e-01,
+      "cpu_time": 2.9132499999999995e-01,
       "time_unit": "ns"
     }
   ]

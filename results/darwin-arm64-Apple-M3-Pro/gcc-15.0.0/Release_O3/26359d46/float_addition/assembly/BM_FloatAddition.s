@@ -1,20 +1,3 @@
-// Source code for BM_FloatAddition (manually added):
-static void BM_FloatAddition(benchmark::State& state) {
-  // Setup
-  float a = 42.0f;
-  float b = 24.0f;
-  float result = 0.0f;
-  
-  // Benchmark loop
-  for (auto _ : state) {
-    // This is the operation we're benchmarking
-    result = a + b;
-    
-    // Prevent compiler from optimizing away the result
-    benchmark::DoNotOptimize(result);
-  }
-}
-
 // Assembly:
 0000000100003448 <BM_FloatAddition(benchmark::State&)>:
 100003448:     	sub	sp, sp, #64

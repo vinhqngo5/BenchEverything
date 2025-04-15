@@ -13,7 +13,7 @@ This benchmark measures the performance of simple integer addition operations.
 
 | Benchmark | Time (ns) | CPU (ns) | Iterations | Repetitions | Threads | 
 | --------- | --------- | -------- | ---------- | ----------- | ------- | 
-| BM_IntAddition | 0.28 | 0.28 | 1000000000 | 1 | 1 | 
+| BM_IntAddition | 0.30 | 0.29 | 1000000000 | 1 | 1 | 
 
 
 {{GBENCH_CONSOLE_OUTPUT}}
@@ -21,23 +21,6 @@ This benchmark measures the performance of simple integer addition operations.
 ## Assembly Code
 
 ```asm
-// Source code for BM_IntAddition (manually added):
-static void BM_IntAddition(benchmark::State& state) {
-  // Setup
-  int a = 42;
-  int b = 24;
-  int result = 0;
-  
-  // Benchmark loop
-  for (auto _ : state) {
-    // This is the operation we're benchmarking
-    result = a + b;
-    
-    // Prevent compiler from optimizing away the result
-    benchmark::DoNotOptimize(result);
-  }
-}
-
 // Assembly:
 0000000100003440 <BM_IntAddition(benchmark::State&)>:
 100003440:     	sub	sp, sp, #64

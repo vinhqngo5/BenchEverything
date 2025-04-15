@@ -11,7 +11,7 @@ The benchmark measures how performance scales across different container sizes, 
 
 | Property | Value |
 |----------|-------|
-| Timestamp | 2025-04-15T20:55:22.686536 |
+| Timestamp | 2025-04-15T21:05:38.293118 |
 | Platform ID | darwin-arm64-Apple-M3-Pro |
 | CPU Model | Apple-M3-Pro |
 | Compiler | clang |
@@ -29,22 +29,22 @@ The benchmark measures how performance scales across different container sizes, 
 
 | Benchmark | Time (ns) | CPU (ns) | Iterations | Repetitions | Threads | Bytes/Second | Items/Second | 
 | --------- | --------- | -------- | ---------- | ----------- | ------- | ------------ | ------------ | 
-| BM_ContainerPushBack<std::vector<int>>/1024 | 1.31 | 1.31 | 511188 | 1 | 1 | 3133438161.08 | 783359540.27 | 
-| BM_ContainerPushBack<std::vector<int>>/4096 | 2.49 | 2.48 | 278480 | 1 | 1 | 6594052742.41 | 1648513185.60 | 
-| BM_ContainerPushBack<std::vector<int>>/32768 | 13.07 | 13.01 | 54434 | 1 | 1 | 10077548384.36 | 2519387096.09 | 
-| BM_ContainerPushBack<std::vector<int>>/262144 | 153.69 | 152.99 | 4382 | 1 | 1 | 6854061519.87 | 1713515379.97 | 
+| BM_ContainerPushBack<std::vector<int>>/1024 | 1.29 | 1.30 | 541921 | 1 | 1 | 3161194256.69 | 790298564.17 | 
+| BM_ContainerPushBack<std::vector<int>>/4096 | 2.45 | 2.45 | 286785 | 1 | 1 | 6690605954.03 | 1672651488.51 | 
+| BM_ContainerPushBack<std::vector<int>>/32768 | 12.80 | 12.80 | 53751 | 1 | 1 | 10239863074.15 | 2559965768.54 | 
+| BM_ContainerPushBack<std::vector<int>>/262144 | 154.67 | 154.66 | 4718 | 1 | 1 | 6779700794.16 | 1694925198.54 | 
 | BM_ContainerPushBack<std::vector<int>>_BigO | N/A | N/A | N/A | 1 | 1 | N/A | N/A | 
 | BM_ContainerPushBack<std::vector<int>>_RMS | N/A | N/A | N/A | 1 | 1 | N/A | N/A | 
-| BM_ContainerPushBack<std::deque<int>>/1024 | 1.25 | 1.26 | 552421 | 1 | 1 | 3259994317.71 | 814998579.43 | 
-| BM_ContainerPushBack<std::deque<int>>/4096 | 3.32 | 3.32 | 210078 | 1 | 1 | 4932266348.73 | 1233066587.18 | 
-| BM_ContainerPushBack<std::deque<int>>/32768 | 22.36 | 22.30 | 26992 | 1 | 1 | 5877791201.00 | 1469447800.25 | 
-| BM_ContainerPushBack<std::deque<int>>/262144 | 168.89 | 168.85 | 4075 | 1 | 1 | 6210101385.92 | 1552525346.48 | 
+| BM_ContainerPushBack<std::deque<int>>/1024 | 1.25 | 1.25 | 550189 | 1 | 1 | 3278603208.22 | 819650802.06 | 
+| BM_ContainerPushBack<std::deque<int>>/4096 | 3.37 | 3.37 | 209045 | 1 | 1 | 4868816455.92 | 1217204113.98 | 
+| BM_ContainerPushBack<std::deque<int>>/32768 | 24.13 | 22.54 | 31639 | 1 | 1 | 5815378348.55 | 1453844587.14 | 
+| BM_ContainerPushBack<std::deque<int>>/262144 | 168.66 | 168.58 | 4208 | 1 | 1 | 6220186966.16 | 1555046741.54 | 
 | BM_ContainerPushBack<std::deque<int>>_BigO | N/A | N/A | N/A | 1 | 1 | N/A | N/A | 
 | BM_ContainerPushBack<std::deque<int>>_RMS | N/A | N/A | N/A | 1 | 1 | N/A | N/A | 
-| BM_ContainerPushBack<std::list<int>>/1024 | 37.17 | 37.16 | 18880 | 1 | 1 | 110220990.77 | 27555247.69 | 
-| BM_ContainerPushBack<std::list<int>>/4096 | 147.06 | 147.06 | 4805 | 1 | 1 | 111413351.75 | 27853337.94 | 
-| BM_ContainerPushBack<std::list<int>>/32768 | 1483.52 | 1483.11 | 463 | 1 | 1 | 88376314.47 | 22094078.62 | 
-| BM_ContainerPushBack<std::list<int>>/262144 | 11270.94 | 11225.98 | 62 | 1 | 1 | 93406155.94 | 23351538.98 | 
+| BM_ContainerPushBack<std::list<int>>/1024 | 37.31 | 37.31 | 18563 | 1 | 1 | 109772840.21 | 27443210.05 | 
+| BM_ContainerPushBack<std::list<int>>/4096 | 144.40 | 144.39 | 4683 | 1 | 1 | 113470356.22 | 28367589.06 | 
+| BM_ContainerPushBack<std::list<int>>/32768 | 1444.24 | 1443.97 | 458 | 1 | 1 | 90771867.38 | 22692966.84 | 
+| BM_ContainerPushBack<std::list<int>>/262144 | 11199.40 | 11142.98 | 63 | 1 | 1 | 94101901.97 | 23525475.49 | 
 | BM_ContainerPushBack<std::list<int>>_BigO | N/A | N/A | N/A | 1 | 1 | N/A | N/A | 
 | BM_ContainerPushBack<std::list<int>>_RMS | N/A | N/A | N/A | 1 | 1 | N/A | N/A | 
 
@@ -75,17 +75,17 @@ Assembly for the vector implementation:
 template <typename Container>
 static void BM_ContainerPushBack(benchmark::State& state) {
     const int N = state.range(0);
-    
+
     for (auto _ : state) {
         state.PauseTiming();
         Container c;
         state.ResumeTiming();
-        
+
         for (int i = 0; i < N; ++i) {
             c.push_back(i);
         }
     }
-    
+
     state.SetItemsProcessed(int64_t(state.iterations()) * N);
     state.SetBytesProcessed(int64_t(state.iterations()) * N * sizeof(int));
     state.SetLabel(std::to_string(N) + " elements");
@@ -381,17 +381,17 @@ Assembly for the deque implementation:
 template <typename Container>
 static void BM_ContainerPushBack(benchmark::State& state) {
     const int N = state.range(0);
-    
+
     for (auto _ : state) {
         state.PauseTiming();
         Container c;
         state.ResumeTiming();
-        
+
         for (int i = 0; i < N; ++i) {
             c.push_back(i);
         }
     }
-    
+
     state.SetItemsProcessed(int64_t(state.iterations()) * N);
     state.SetBytesProcessed(int64_t(state.iterations()) * N * sizeof(int));
     state.SetLabel(std::to_string(N) + " elements");
@@ -609,17 +609,17 @@ Assembly for the list implementation:
 template <typename Container>
 static void BM_ContainerPushBack(benchmark::State& state) {
     const int N = state.range(0);
-    
+
     for (auto _ : state) {
         state.PauseTiming();
         Container c;
         state.ResumeTiming();
-        
+
         for (int i = 0; i < N; ++i) {
             c.push_back(i);
         }
     }
-    
+
     state.SetItemsProcessed(int64_t(state.iterations()) * N);
     state.SetBytesProcessed(int64_t(state.iterations()) * N * sizeof(int));
     state.SetLabel(std::to_string(N) + " elements");
