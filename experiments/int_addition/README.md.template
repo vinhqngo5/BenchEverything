@@ -4,13 +4,16 @@ This benchmark measures the performance of simple integer addition operations.
 
 ## Configuration
 
-- Compiler: {{METADATA:config.compiler_version}}
+- Compiler: {{METADATA:compiler_version}}
 - Flags: `{{METADATA:config.cxx_flags_used}}`
-- Platform: {{METADATA:platform_id}}
+- Platform: {{METADATA:detailed_platform_id}}
+- CPU: {{METADATA:cpu_model}}
 
 ## Benchmark Results
 
 {{GBENCH_TABLE}}
+
+{{GBENCH_CONSOLE_OUTPUT}}
 
 ## Assembly Code
 
@@ -21,3 +24,5 @@ This benchmark measures the performance of simple integer addition operations.
 ## Performance Counters
 
 {{PERF_SUMMARY}}
+
+{{RELATED_LINKS}}

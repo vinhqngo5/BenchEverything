@@ -102,7 +102,7 @@ def run_pre_report_script(experiment_name, results_dir, assets_dir):
 def create_report_directories(results_dir):
     """Create report directories based on results directory structure."""
     # Extract components from the results path
-    # Expected pattern: <results>/platform/compiler/flags/metadata_hash/experiment
+    # Expected pattern: <results>/<detailed_platform_id>/<detailed_compiler_id>/<build_flags>/<metadata_hash>/<experiment>
     try:
         # Handle both Path objects and strings
         results_path = Path(results_dir) if not isinstance(results_dir, Path) else results_dir
@@ -116,13 +116,25 @@ def create_report_directories(results_dir):
             try:
                 results_index = results_path.parts.index('results')
                 # Extract components after 'results'
-                platform_id = results_path.parts[results_index + 1]
-                compiler_id = results_path.parts[results_index + 2]
+                detailed_platform_id = results_path.parts[results_index + 1]
+                detailed_compiler_id = results_path.parts[results_index + 2]
                 build_flags_id = results_path.parts[results_index + 3]
                 metadata_hash = results_path.parts[results_index + 4]
                 
-                # Create report directory
-                report_base_dir = PROJECT_ROOT / "reports" / platform_id / compiler_id / build_flags_id / metadata_hash
+                # Check if metadata.json exists and read the detailed IDs from there if available
+                metadata_file = results_path / "metadata.json"
+                if metadata_file.exists():
+                    try:
+                        with open(metadata_file, 'r') as f:
+                            metadata = json.load(f)
+                        # Use the values from metadata if available
+                        detailed_platform_id = metadata.get('detailed_platform_id', detailed_platform_id)
+                        detailed_compiler_id = metadata.get('detailed_compiler_id', detailed_compiler_id)
+                    except Exception as e:
+                        logger.warning(f"Could not read metadata for additional details: {e}")
+                
+                # Create report directory mirroring the structure in results
+                report_base_dir = PROJECT_ROOT / "reports" / detailed_platform_id / detailed_compiler_id / build_flags_id / metadata_hash
                 report_dir = report_base_dir / experiment_name
                 assets_dir = report_dir / "assets"
                 
@@ -133,21 +145,48 @@ def create_report_directories(results_dir):
                 return report_dir, assets_dir, experiment_name
             except ValueError:
                 # 'results' not found in path
-                pass
+                logger.warning("'results' directory not found in path, using fallback approach")
     except Exception as e:
         logger.error(f"Error parsing results directory: {e}")
     
-    # Fallback approach: Try to extract information from the results directory name
+    # Fallback approach: Try to extract information from the metadata.json file
+    try:
+        metadata_file = results_path / "metadata.json"
+        if metadata_file.exists():
+            with open(metadata_file, 'r') as f:
+                metadata = json.load(f)
+            
+            # Extract components from metadata
+            detailed_platform_id = metadata.get('detailed_platform_id', 'unknown-platform')
+            detailed_compiler_id = metadata.get('detailed_compiler_id', 'unknown-compiler')
+            build_flags_id = metadata.get('build_flags_id', 'unknown-flags')
+            metadata_hash = metadata.get('metadata_hash', 'unknown-hash')
+            
+            # Create report directory
+            report_base_dir = PROJECT_ROOT / "reports" / detailed_platform_id / detailed_compiler_id / build_flags_id / metadata_hash
+            report_dir = report_base_dir / experiment_name
+            assets_dir = report_dir / "assets"
+            
+            # Create directories
+            os.makedirs(report_dir, exist_ok=True)
+            os.makedirs(assets_dir, exist_ok=True)
+            
+            return report_dir, assets_dir, experiment_name
+    except Exception as e:
+        logger.warning(f"Fallback to metadata.json failed: {e}")
+    
+    # Last resort fallback: create a simple report directory
     try:
         experiment_name = results_path.name
         # Create a simple report directory without the full structure
-        report_dir = PROJECT_ROOT / "reports" / experiment_name
+        report_dir = PROJECT_ROOT / "reports" / "unknown" / experiment_name
         assets_dir = report_dir / "assets"
         
         # Create directories
         os.makedirs(report_dir, exist_ok=True)
         os.makedirs(assets_dir, exist_ok=True)
         
+        logger.warning(f"Could not determine proper directory structure. Creating report in {report_dir}")
         return report_dir, assets_dir, experiment_name
     except Exception as e:
         logger.error(f"Error creating report directories: {e}")
@@ -303,10 +342,15 @@ def create_metadata_table(metadata):
     try:
         # Add key metadata fields
         table += f"| Timestamp | {metadata.get('timestamp_iso', 'Unknown')} |\n"
-        table += f"| Platform | {metadata.get('platform_id', 'Unknown')} |\n"
+        table += f"| Platform ID | {metadata.get('detailed_platform_id', metadata.get('platform_id', 'Unknown'))} |\n"
+        table += f"| CPU Model | {metadata.get('cpu_model', 'Unknown')} |\n"
         table += f"| Compiler | {metadata.get('compiler_id', 'Unknown')} |\n"
+        table += f"| Compiler Version | {metadata.get('compiler_version', 'Unknown')} |\n"
         table += f"| Build Flags | {metadata.get('build_flags_id', 'Unknown')} |\n"
         table += f"| Metadata Hash | {metadata.get('metadata_hash', 'Unknown')} |\n"
+        
+        # Add metadata source information (what went into the hash)
+        table += f"| Metadata Source | {metadata.get('metadata_source', 'Unknown')} |\n"
         
         # Add compiler flags
         config = metadata.get('config', {})
@@ -346,16 +390,15 @@ def replace_placeholders(template_content, results_dir, report_dir, assets_dir, 
     
     # Create tables and other formatted content
     benchmark_table = create_benchmark_table(benchmark_results)
-    benchmark_console_output = add_benchmark_table_output(results_dir)
     metadata_table = create_metadata_table(metadata)
     assembly_links = create_assembly_links(assembly_files)
+    related_links = add_related_links(results_dir, experiment_name)
     
     # Start with the template content
     content = template_content
     
     # Replace Google Benchmark placeholders
     content = content.replace('{{GBENCH_TABLE}}', benchmark_table)
-    content = content.replace('{{GBENCH_CONSOLE_OUTPUT}}', benchmark_console_output)
     if benchmark_results:
         content = content.replace('{{GBENCH_JSON}}', f"```json\n{json.dumps(benchmark_results, indent=2)}\n```")
     else:
@@ -453,6 +496,9 @@ def replace_placeholders(template_content, results_dir, report_dir, assets_dir, 
         else:
             content = content.replace(match.group(0), f"[Asset Not Found: {filename}]")
     
+    # Replace related links placeholder
+    content = content.replace('{{RELATED_LINKS}}', related_links)
+    
     return content
 
 def add_benchmark_table_output(results_dir):
@@ -539,7 +585,8 @@ def find_all_result_directories():
     results_dirs = []
     
     # Pattern to match result directories with the expected structure
-    # <results>/<platform>/<compiler>/<build_flags>/<metadata_hash>/<experiment>
+    # Using the new directory structure with detailed platform ID and compiler ID
+    # <results>/<detailed_platform_id>/<detailed_compiler_id>/<build_flags>/<metadata_hash>/<experiment>
     pattern = str(PROJECT_ROOT / "results" / "**" / "**" / "**" / "**" / "**")
     
     for path in glob.glob(pattern, recursive=True):
@@ -552,6 +599,20 @@ def find_all_result_directories():
     results_dirs = list(set(results_dirs))
     
     return results_dirs
+
+def add_related_links(results_dir, experiment_name):
+    """Create Markdown links to related experiment and result folders."""
+    experiment_path = PROJECT_ROOT / "experiments" / experiment_name
+    experiment_link = experiment_path.relative_to(PROJECT_ROOT)
+    
+    results_path = results_dir
+    results_link = results_path.relative_to(PROJECT_ROOT)
+    
+    links = "## Related Resources\n\n"
+    links += f"- [Experiment Source Code](/{experiment_link})\n"
+    links += f"- [Raw Benchmark Results](/{results_link})\n"
+    
+    return links
 
 def main():
     """Main function to generate reports."""

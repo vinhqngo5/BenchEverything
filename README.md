@@ -57,7 +57,7 @@ To provide a structured C++ benchmarking repository using Google Benchmark and C
 ### 1.2. Core Philosophy
 
 *   **Experiment-centric:** Each benchmark lives in its own isolated directory under `experiments/`.
-*   **Reproducibility:** Results are tagged with configuration details (platform, compiler, flags) and a unique metadata hash. Builds are clean by default.
+*   **Reproducibility:** Results are tagged with configuration details (platform, compiler, flags, CPU model) and a unique metadata hash that ensures reproducible identification of benchmark runs.
 *   **Centralized Configuration:** A primary Python script (`scripts/run_benchmarks.py`), potentially driven by config files, acts as the main user interface for defining *what* to run and *how*.
 *   **Extensibility:** The structure and scripts are designed to be easily modified to add new tools, metrics, platforms, or reporting formats.
 
@@ -141,6 +141,33 @@ BenchEverything/
                             └── <comparison_name>/
                                 └── gcc_vs_clang_timing.png
 ````
+
+BenchEverything uses a carefully structured organization for build, results, and reports directories:
+
+```
+<base_dir>/<detailed_platform_id>/<detailed_compiler_id>/<build_flags_id>/<metadata_hash>/<experiment_name>/
+```
+
+Where:
+- **detailed_platform_id**: Includes OS, CPU architecture, and CPU model (e.g., `darwin-arm64-Apple-M3-Pro`)
+- **detailed_compiler_id**: Includes compiler name and version (e.g., `clang-15.0.0`)
+- **build_flags_id**: Optimization level and other compiler flags (e.g., `Release_O3`)
+- **metadata_hash**: A unique hash generated from platform, compiler, build information (and possibly additional metadatas).
+- **experiment_name**: The name of the benchmark experiment
+
+### Purpose of the Metadata Hash
+
+The metadata hash serves several important functions:
+1. **Reproducibility**: Provides a consistent identifier for a specific combination of platform, compiler, and build settings
+2. **Disambiguation**: Ensures that benchmarks run on similar configurations can still be uniquely identified
+3. **Versioning**: Creates a hash based on relevant components to identify benchmark runs
+4. **Traceability**: Allows linking between build artifacts, results, and generated reports
+
+The hash is generated from a combination of:
+- Platform details (OS, architecture, CPU)
+- Compiler information (name, version)
+- Build configuration (flags, optimization level)
+- Other relevant metadata
 
 ---
 
@@ -509,4 +536,6 @@ The project is designed to be extended:
 ---
 
 ## 10. Future Considerations
+
+
 

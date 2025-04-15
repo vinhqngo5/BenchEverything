@@ -4,9 +4,12 @@ This benchmark measures the performance of simple floating-point addition operat
 
 ## Configuration
 
-- Compiler: {{METADATA:config.compiler_version}}
+- Compiler: {{METADATA:compiler_id}} {{METADATA:compiler_version}}
 - Flags: `{{METADATA:config.cxx_flags_used}}`
-- Platform: {{METADATA:platform_id}}
+- Platform: {{METADATA:detailed_platform_id}}
+- CPU: {{METADATA:cpu_model}}
+- Build Flags: {{METADATA:build_flags_id}}
+- Metadata Hash: {{METADATA:metadata_hash}}
 
 ## Benchmark Results
 
@@ -21,3 +24,5 @@ This benchmark measures the performance of simple floating-point addition operat
 ## Performance Counters
 
 {{PERF_SUMMARY}}
+
+{{RELATED_LINKS}}
