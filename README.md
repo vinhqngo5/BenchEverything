@@ -999,15 +999,14 @@ python scripts/generate_combined_report.py --type comparison --compare-configs g
 # Compare results between different optimization levels
 python scripts/generate_combined_report.py --type comparison --compare-flags Debug_O0,Release_O3
 
-# Generate a summary report for all experiments with a specific configuration
-python scripts/generate_combined_report.py --type summary
+# Compare GCC vs. Clang (single contender)
+python scripts/generate_combined_report.py --baseline results/darwin-arm64-Apple-M3-Pro/gcc-15.0.0/Debug_O0/845f2637 --contender results/darwin-arm64-Apple-M3-Pro/clang-20.1.2/Release_O3/0528a2c3
+
+# Compare with multiple contenders simultaneously
+python scripts/generate_combined_report.py --baseline results/darwin-arm64-Apple-M3-Pro/gcc-15.0.0/Debug_O0/845f2637 --contenders results/darwin-arm64-Apple-M3-Pro/gcc-15.0.0/Release_O3/26359d46,results/darwin-arm64-Apple-M3-Pro/clang-20.1.2/Release_O3/0528a2c3
 ```
 
-This script:
-1. Reads results from multiple directories based on the comparison type
-2. Performs comparative analysis (e.g., calculating speedup/slowdown)
-3. Generates visualizations comparing the results
-4. Creates a report using a comparison template
+The generated reports will be in the `reports/` directory. For more options, see [Generating Reports](#7-generating-reports).
 
 #### 7.2.1. Report Types
 
