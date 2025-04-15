@@ -203,6 +203,7 @@ The metadata hash is a short (8-character) identifier that uniquely represents a
 - Hardware details (CPU model, architecture)
 - Software details (OS, compiler version)
 - Build configuration (optimization flags, build type)
+- **Additional metadata** for extended configurability and future-proofing
 
 #### How is it Generated?
 
@@ -218,12 +219,24 @@ The metadata hash is a short (8-character) identifier that uniquely represents a
    }
    ```
 
-2. The values are combined into a standardized string:
-   ```
-   "build_flags_id=Release_O3:compiler_name=clang:compiler_version=20.1.2:cpu=Apple-M3-Pro:machine=arm64:system=darwin"
+2. **Optional additional metadata** can be included:
+   ```python
+   # Example of additional_metadata that could be added:
+   additional_metadata = {
+       "cpu_frequency": "3.2GHz",           # CPU frequency state
+       "power_profile": "performance",      # System power settings
+       "environment_vars": "TZ=UTC,LANG=C", # Relevant environment variables
+       "custom_config": "feature_X=enabled" # Custom configuration options
+   }
+   metadata.update(additional_metadata)     # Add to standard metadata
    ```
 
-3. An MD5 hash is generated and truncated to 8 characters:
+3. The values are combined into a standardized string:
+   ```
+   "build_flags_id=Release_O3:compiler_name=clang:compiler_version=20.1.2:cpu=Apple-M3-Pro:cpu_frequency=3.2GHz:machine=arm64:system=darwin"
+   ```
+
+4. An MD5 hash is generated and truncated to 8 characters:
    ```
    0528a2c3
    ```
@@ -234,8 +247,18 @@ The metadata hash is a short (8-character) identifier that uniquely represents a
 2. **Directory Organization**: Results are stored in directories named by the hash
 3. **Linkage**: The hash connects build artifacts, results, and reports
 4. **Verification**: Confirms that results came from a specific environment
+5. **Extensibility**: The additional metadata support allows capturing new factors that might affect performance without breaking the directory structure
 
-For detailed implementation, see the [`generate_metadata_hash()`](scripts/run_benchmarks.py) function.
+#### Extending with Additional Metadata
+
+The `generate_metadata_hash()` function accepts an optional `additional_metadata` parameter that allows incorporating configuration details beyond the standard fields. This enables:
+
+- Capturing benchmark-specific configuration options
+- Including system state information (power settings, CPU frequency states)
+- Adding custom tags or identifiers for specific test runs
+- Future-proofing by allowing new metadata to be added without changing the core structure
+
+For implementation details, see the [`generate_metadata_hash()`](scripts/run_benchmarks.py) function.
 
 ---
 
