@@ -51,7 +51,9 @@ This benchmark measures the performance of simple integer addition operations.
 
 ## Performance Counters
 
+```
 Performance counter data not available
+```
 
 ## Related Resources
 

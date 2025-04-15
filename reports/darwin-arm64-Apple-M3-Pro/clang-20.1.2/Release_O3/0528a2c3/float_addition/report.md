@@ -60,7 +60,9 @@ static void BM_FloatAddition(benchmark::State& state) {
 
 ## Performance Counters
 
+```
 Performance counter data not available
+```
 
 ## Related Resources
 

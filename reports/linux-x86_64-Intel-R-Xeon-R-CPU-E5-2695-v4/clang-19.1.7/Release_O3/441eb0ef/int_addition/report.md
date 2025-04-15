@@ -64,6 +64,7 @@ static void BM_IntAddition(benchmark::State& state) {
 
 ## Performance Counters
 
+```
 # started on Tue Apr 15 14:32:50 2025
 
 
@@ -81,6 +82,7 @@ static void BM_IntAddition(benchmark::State& state) {
 
 
 
+```
 
 ## Related Resources
 
