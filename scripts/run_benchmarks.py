@@ -597,7 +597,7 @@ def _extract_function_assembly(assembly_text, lookup_name, original_name=None):
 def manual_extraction(benchmark_exe, benchmark_functions, source_files, assembly_dir, name_mapping=None):
     """Fallback function to extract assembly and manually combine with source."""
     try:
-        # Try with standard objdump
+        # Try with standard objdump to get full disassembly
         objdump_cmd = ["objdump", "-d", "--no-show-raw-insn", "-C", str(benchmark_exe)]
         result = subprocess.run(objdump_cmd, capture_output=True, text=True, check=True)
         disassembly = result.stdout
@@ -612,6 +612,10 @@ def manual_extraction(benchmark_exe, benchmark_functions, source_files, assembly
         for func_name in benchmark_functions:
             # If we have a name mapping from nm, use the mapped name for lookup
             lookup_name = name_mapping.get(func_name, func_name) if name_mapping else func_name
+            
+            # For template functions, get the base name for template extraction
+            is_template = '<' in func_name
+            base_name = func_name.split('<')[0] if is_template else func_name
             
             # Try with the mapped name from nm first
             func_asm = _extract_direct_match(lines, lookup_name, func_name)
@@ -630,41 +634,27 @@ def manual_extraction(benchmark_exe, benchmark_functions, source_files, assembly
                 if not func_asm:
                     func_asm = _extract_generic_match(lines, func_name)
             
-            if func_asm:
-                with open(assembly_dir / f"{func_name}.s", "w") as f:
-                    # Try to manually combine with source for the benchmark function
-                    if source_files:
-                        f.write(f"// Source code for {func_name} (manually added):\n")
-                        for source_file, content in source_files.items():
-                            if func_name in content:
-                                # Extract the function from source (simple approach)
-                                src_lines = content.split('\n')
-                                func_lines = []
-                                in_func = False
-                                brace_count = 0
-                                
-                                for source_line in src_lines:
-                                    if func_name in source_line and '{' in source_line:
-                                        in_func = True
-                                        brace_count = 1
-                                        func_lines.append(source_line)
-                                    elif in_func:
-                                        func_lines.append(source_line)
-                                        brace_count += source_line.count('{')
-                                        brace_count -= source_line.count('}')
-                                        if brace_count <= 0:
-                                            break
-                                
-                                if func_lines:
-                                    f.write('\n'.join(func_lines))
-                                    f.write('\n\n')
-                        
-                        f.write("// Assembly:\n")
-                    
+            # Create the assembly file
+            with open(assembly_dir / f"{func_name}.s", "w") as f:
+                # If it's a template function, extract the template definition first
+                if is_template:
+                    template_def = extract_template_definition(source_files, base_name)
+                    if template_def:
+                        f.write(f"// Template definition for {base_name}:\n")
+                        f.write(template_def)
+                        f.write("\n\n")
+                    else:
+                        f.write(f"// Could not find template definition for {base_name}\n\n")
+                
+                # Include any assembly we found
+                if func_asm:
+                    f.write("// Assembly:\n")
                     f.write('\n'.join(func_asm))
-                logger.info(f"Extracted assembly for {func_name}")
-            else:
-                logger.warning(f"Could not find assembly for {func_name}")
+                    logger.info(f"Extracted assembly for {func_name}")
+                else:
+                    f.write(f"// Note: Assembly for {func_name} could not be found\n")
+                    f.write(f"// Look for function containing '{base_name}' in full_disassembly.txt\n")
+                    logger.warning(f"Could not find assembly for {func_name}")
                 
     except (subprocess.SubprocessError, FileNotFoundError) as e:
         logger.warning(f"Failed to extract assembly: {e}")
@@ -782,6 +772,87 @@ def _extract_generic_match(lines, func_name):
                     func_asm.append(line)
     
     return func_asm
+
+def extract_template_definition(source_files, base_func_name):
+    """Extract the template definition for a benchmark function.
+    
+    Args:
+        source_files: Dict mapping filenames to content
+        base_func_name: The base function name without template parameters
+        
+    Returns:
+        The template definition as a string, or None if not found
+    """
+    for source_file, content in source_files.items():
+        # Look for the template definition
+        lines = content.split('\n')
+        for i, line in enumerate(lines):
+            # Check for template definition patterns
+            if "template" in line and "<" in line and ">" in line:
+                # Check if the next lines contain the function name
+                for j in range(i+1, min(i+5, len(lines))):
+                    if j < len(lines) and base_func_name in lines[j]:
+                        # Found the function, now extract the complete definition
+                        start_line = i
+                        func_lines = []
+                        brace_count = 0
+                        in_function = False
+                        
+                        # Include the template line
+                        func_lines.append(lines[start_line])
+                        
+                        # Continue until we find the function opening brace
+                        k = start_line + 1
+                        while k < len(lines) and not in_function:
+                            func_lines.append(lines[k])
+                            if "{" in lines[k]:
+                                in_function = True
+                                brace_count = lines[k].count('{')
+                            k += 1
+                        
+                        # Continue until the function is complete (all braces matched)
+                        while k < len(lines) and in_function:
+                            line = lines[k]
+                            func_lines.append(line)
+                            brace_count += line.count('{')
+                            brace_count -= line.count('}')
+                            if brace_count <= 0:
+                                break
+                            k += 1
+                        
+                        return '\n'.join(func_lines)
+            
+            # Also check for static template function definitions without "template" on the same line
+            elif base_func_name in line and "<" in line and ">" in line and ("{" in line or ";" in line):
+                # Look backwards for the template definition
+                for j in range(i-1, max(0, i-5), -1):
+                    if "template" in lines[j] and "<" in lines[j] and ">" in lines[j]:
+                        # Found the template declaration, now extract the complete definition
+                        start_line = j
+                        func_lines = []
+                        brace_count = 0
+                        in_function = False
+                        
+                        # Include lines from template declaration to function definition
+                        for l in range(start_line, i+1):
+                            func_lines.append(lines[l])
+                            if "{" in lines[l]:
+                                in_function = True
+                                brace_count = lines[l].count('{')
+                        
+                        # If the function has a body, extract it
+                        if in_function:
+                            k = i + 1
+                            while k < len(lines) and brace_count > 0:
+                                line = lines[k]
+                                func_lines.append(line)
+                                brace_count += line.count('{')
+                                brace_count -= line.count('}')
+                                k += 1
+                            
+                            return '\n'.join(func_lines)
+        
+    return None
 
 def run_benchmark(experiment, build_dir, compiler_config, build_flags_id="Release_O3", force=False):
     """Run the benchmark and save results."""

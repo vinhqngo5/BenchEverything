@@ -1,4 +1,23 @@
-// Source code for BM_ContainerPushBack<std::list<int>> (manually added):
+// Template definition for BM_ContainerPushBack:
+template <typename Container>
+static void BM_ContainerPushBack(benchmark::State& state) {
+    const int N = state.range(0);
+    
+    for (auto _ : state) {
+        state.PauseTiming();
+        Container c;
+        state.ResumeTiming();
+        
+        for (int i = 0; i < N; ++i) {
+            c.push_back(i);
+        }
+    }
+    
+    state.SetItemsProcessed(int64_t(state.iterations()) * N);
+    state.SetBytesProcessed(int64_t(state.iterations()) * N * sizeof(int));
+    state.SetLabel(std::to_string(N) + " elements");
+}
+
 // Assembly:
 // Assembly for benchmark function: BM_ContainerPushBack<std::list<int>>
 000000010000218c <void BM_ContainerPushBack<std::__1::list<int, std::__1::allocator<int>>>(benchmark::State&)>:

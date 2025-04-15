@@ -1,4 +1,23 @@
-// Source code for BM_ContainerPushBack<std::deque<int>> (manually added):
+// Template definition for BM_ContainerPushBack:
+template <typename Container>
+static void BM_ContainerPushBack(benchmark::State& state) {
+    const int N = state.range(0);
+    
+    for (auto _ : state) {
+        state.PauseTiming();
+        Container c;
+        state.ResumeTiming();
+        
+        for (int i = 0; i < N; ++i) {
+            c.push_back(i);
+        }
+    }
+    
+    state.SetItemsProcessed(int64_t(state.iterations()) * N);
+    state.SetBytesProcessed(int64_t(state.iterations()) * N * sizeof(int));
+    state.SetLabel(std::to_string(N) + " elements");
+}
+
 // Assembly:
 // Assembly for benchmark function: BM_ContainerPushBack<std::deque<int>>
 0000000100001de8 <void BM_ContainerPushBack<std::__1::deque<int, std::__1::allocator<int>>>(benchmark::State&)>:
