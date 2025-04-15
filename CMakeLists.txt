@@ -25,3 +25,4 @@ include(${CMAKE_SOURCE_DIR}/cmake/BenchmarkUtils.cmake)
 # Include all experiments
 add_subdirectory(experiments/int_addition)
 add_subdirectory(experiments/float_addition)
+add_subdirectory(experiments/container_push_back)

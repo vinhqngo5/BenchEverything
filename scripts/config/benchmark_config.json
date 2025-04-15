@@ -23,6 +23,12 @@
       "benchmark_executable": "float_addition_benchmark",
       "template_file": "experiments/float_addition/README.md.template",
       "output_file": "reports/float_addition_report.md"
+    },
+    {
+      "name": "container_push_back",
+      "benchmark_executable": "container_push_back_benchmark",
+      "template_file": "experiments/container_push_back/README.md.template",
+      "output_file": "reports/container_push_back_report.md"
     }
   ]
 }

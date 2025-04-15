@@ -349,9 +349,11 @@ To create a new benchmark experiment:
 
 3. **Create CMakeLists.txt**:
    ```cmake
+   cmake_minimum_required(VERSION 3.15)
+   
    add_benchmark_experiment(
      NAME my_benchmark
-     SOURCES src/benchmark.cpp
+     SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/src/benchmark.cpp
    )
    ```
 

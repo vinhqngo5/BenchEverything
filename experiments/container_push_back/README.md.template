@@ -1,0 +1,59 @@
+# Container Push Back Performance Benchmark
+
+This benchmark compares the performance of `push_back` operations for different C++ containers:
+- `std::vector<int>`
+- `std::deque<int>`
+- `std::list<int>`
+
+The benchmark measures how performance scales across different container sizes, from 1,024 to 262,144 elements.
+
+## Environment
+
+{{METADATA_TABLE}}
+
+## Benchmark Results
+
+### Raw Performance Data
+
+{{GBENCH_TABLE}}
+
+### Performance Across Container Sizes
+
+The benchmark compares the time taken to insert elements into different containers, testing various container sizes to observe how each implementation scales.
+
+Key metrics tracked:
+- Items processed per second
+- Bytes processed per second
+- Big O computational complexity
+
+## Complexity Analysis
+
+Google Benchmark computed the following complexity estimations:
+
+```
+{{GBENCH_JSON:compute_complexity}}
+```
+
+## Assembly Analysis
+
+Assembly for the vector implementation:
+
+```asm
+{{ASSEMBLY:BM_ContainerPushBack<std::vector<int>>}}
+```
+
+Assembly for the deque implementation:
+
+```asm
+{{ASSEMBLY:BM_ContainerPushBack<std::deque<int>>}}
+```
+
+Assembly for the list implementation:
+
+```asm
+{{ASSEMBLY:BM_ContainerPushBack<std::list<int>>}}
+```
+
+## All Assembly Files
+
+{{ASSEMBLY_LINKS}}
