@@ -1,0 +1,85 @@
+{
+  "context": {
+    "date": "2025-04-16T17:17:05+02:00",
+    "host_name": "CM-K6R9HXDHXQ",
+    "executable": "/Users/vinhq/Library/CloudStorage/OneDrive-Chalmers/Desktop/Q22025/BenchEverything/build/darwin-arm64-Apple-M3-Pro/clang-15.0.0/Debug_O0/experiments/container_push_back/container_push_back_benchmark",
+    "num_cpus": 11,
+    "mhz_per_cpu": 24,
+    "cpu_scaling_enabled": false,
+    "caches": [
+      {
+        "type": "Data",
+        "level": 1,
+        "size": 65536,
+        "num_sharing": 0
+      },
+      {
+        "type": "Instruction",
+        "level": 1,
+        "size": 131072,
+        "num_sharing": 0
+      },
+      {
+        "type": "Unified",
+        "level": 2,
+        "size": 4194304,
+        "num_sharing": 1
+      }
+    ],
+    "load_avg": [15.9619,8.30029,6.51611],
+    "library_build_type": "debug"
+  },
+  "benchmarks": [
+    {
+      "name": "BM_ContainerPushBack<std::vector<int>>/1024",
+      "family_index": 0,
+      "per_family_instance_index": 0,
+      "run_name": "BM_ContainerPushBack<std::vector<int>>/1024",
+      "run_type": "iteration",
+      "repetitions": 1,
+      "repetition_index": 0,
+      "threads": 1,
+      "iterations": 21905,
+      "real_time": 3.4583413576612855e+01,
+      "cpu_time": 3.3538461538462506e+01,
+      "time_unit": "us",
+      "bytes_per_second": 1.2212844036696896e+08,
+      "items_per_second": 3.0532110091742240e+07,
+      "label": "1024 elements"
+    },
+    {
+      "name": "BM_ContainerPushBack<std::vector<int>>/4096",
+      "family_index": 0,
+      "per_family_instance_index": 1,
+      "run_name": "BM_ContainerPushBack<std::vector<int>>/4096",
+      "run_type": "iteration",
+      "repetitions": 1,
+      "repetition_index": 0,
+      "threads": 1,
+      "iterations": 6028,
+      "real_time": 1.2698230706520305e+02,
+      "cpu_time": 1.2402737226277358e+02,
+      "time_unit": "us",
+      "bytes_per_second": 1.3209987199670441e+08,
+      "items_per_second": 3.3024967999176104e+07,
+      "label": "4096 elements"
+    },
+    {
+      "name": "BM_ContainerPushBack<std::vector<int>>/32768",
+      "family_index": 0,
+      "per_family_instance_index": 2,
+      "run_name": "BM_ContainerPushBack<std::vector<int>>/32768",
+      "run_type": "iteration",
+      "repetitions": 1,
+      "repetition_index": 0,
+      "threads": 1,
+      "iterations": 770,
+      "real_time": 8.7403885167101157e+02,
+      "cpu_time": 8.7394805194805087e+02,
+      "time_unit": "us",
+      "bytes_per_second": 1.4997687758195400e+08,
+      "items_per_second": 3.7494219395488501e+07,
+      "label": "32768 elements"
+    }
+  ]
+}

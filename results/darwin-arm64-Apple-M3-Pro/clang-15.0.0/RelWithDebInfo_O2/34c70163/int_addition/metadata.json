@@ -1,0 +1,33 @@
+{
+  "timestamp_iso": "2025-04-16T17:18:14.975168",
+  "experiment_name": "int_addition",
+  "metadata_hash": "34c70163",
+  "metadata_source": "build_flags_id=RelWithDebInfo_O2|compiler_id=clang-15.0.0|platform_id=darwin-arm64-Apple-M3-Pro",
+  "detailed_platform_id": "darwin-arm64-Apple-M3-Pro",
+  "detailed_compiler_id": "clang-15.0.0",
+  "platform_id": "darwin-arm64",
+  "compiler_id": "clang",
+  "compiler_type": "clang",
+  "compiler_version": "15.0.0",
+  "build_flags_id": "RelWithDebInfo_O2",
+  "cpu_model": "Apple-M3-Pro",
+  "environment": {
+    "platform": "Darwin",
+    "platform_release": "24.4.0",
+    "platform_version": "Darwin Kernel Version 24.4.0: Wed Mar 19 21:17:32 PDT 2025; root:xnu-11417.101.15~1/RELEASE_ARM64_T6030",
+    "architecture": "arm64",
+    "processor": "arm",
+    "cpu_model": "Apple-M3-Pro",
+    "python_version": "3.13.2",
+    "gcc_path_version": "Apple clang version 15.0.0 (clang-1500.3.9.4)",
+    "clang_path_version": "Homebrew clang version 20.1.2"
+  },
+  "config": {
+    "cmake_build_type": "RelWithDebInfo",
+    "cxx_flags_used": "-std=c++20 -O2",
+    "compiler_path": "/usr/bin/clang++",
+    "toolchain_file": "cmake/toolchains/clang.cmake",
+    "gbench_command_template": "/Users/vinhq/Library/CloudStorage/OneDrive-Chalmers/Desktop/Q22025/BenchEverything/build/darwin-arm64-Apple-M3-Pro/clang-15.0.0/RelWithDebInfo_O2/experiments/int_addition/int_addition_benchmark --benchmark_out=<results_dir>/benchmark_output.json"
+  },
+  "experiment_config_applied": {}
+}
