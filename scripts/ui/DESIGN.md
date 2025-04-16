@@ -72,9 +72,6 @@ The UI is organized around a tabbed interface with common controls:
   - Create basic `benchmark.cpp`
   - Auto-update main `CMakeLists.txt` (with warning about file modification)
   - Auto-update `benchmark_config.json` (with warning)
-- Advanced Options (collapsible):
-  - Custom template directory: Path selector
-  - Additional dependencies: Text input
 
 **Actions**:
 - The "Run Command" button triggers experiment creation
@@ -85,13 +82,13 @@ The UI is organized around a tabbed interface with common controls:
 **Purpose**: Configure and execute benchmark runs.
 
 **Controls**:
+- Path to config: Path selector (default: benchmark_config.json). When path to config is reloaded, auto reload the Experiment and Compiler selection.
 - Experiment Selection: Checklist populated from config with "Select All/None" buttons
 - Compiler Selection: Checklist with "Select All/None" buttons
 - Build Flags: Dropdown with common options + text input for custom flags
 - Options:
   - Force re-run: Checkbox
   - Incremental build: Checkbox
-  - Path to custom config: Path selector
 - Additional Options (collapsible):
   - Extra flags for `run_benchmarks.py`
 

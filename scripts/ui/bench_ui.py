@@ -11,7 +11,7 @@ try:
     from PySide6.QtWidgets import (
         QApplication, QMainWindow, QTabWidget, QWidget, QVBoxLayout, QHBoxLayout,
         QPushButton, QTextEdit, QLabel, QSplitter, QFileDialog, QMessageBox,
-        QCheckBox, QComboBox, QListWidget, QLineEdit, QGroupBox, QRadioButton,
+        QCheckBox, QComboBox, QListWidget, QListWidgetItem, QLineEdit, QGroupBox, QRadioButton,
         QFormLayout, QScrollArea
     )
     from PySide6.QtCore import Qt, QThread, Signal, Slot, QProcess, QSize
@@ -249,11 +249,11 @@ class CreateExperimentTab(QWidget):
         self.create_benchmark_cpp.stateChanged.connect(self.update_command)
         
         self.update_cmake = QCheckBox("Auto-update main CMakeLists.txt")
-        self.update_cmake.setChecked(False)
+        self.update_cmake.setChecked(True)
         self.update_cmake.stateChanged.connect(self.update_command)
         
         self.update_config = QCheckBox("Auto-update benchmark_config.json")
-        self.update_config.setChecked(False)
+        self.update_config.setChecked(True)
         self.update_config.stateChanged.connect(self.update_command)
         
         template_layout.addWidget(self.create_benchmark_cpp)
@@ -262,22 +262,6 @@ class CreateExperimentTab(QWidget):
         
         layout.addLayout(form_layout)
         layout.addWidget(self.template_group)
-        
-        # Advanced options (collapsible)
-        self.advanced_group = QGroupBox("Advanced Options")
-        self.advanced_group.setCheckable(True)
-        self.advanced_group.setChecked(False)
-        advanced_layout = QFormLayout(self.advanced_group)
-        
-        self.template_dir = PathSelector(dialog_type="dir", dialog_caption="Select Template Directory")
-        self.template_dir.path_changed.connect(self.update_command)
-        advanced_layout.addRow("Custom Template Directory:", self.template_dir)
-        
-        self.additional_deps = QLineEdit()
-        self.additional_deps.textChanged.connect(self.update_command)
-        advanced_layout.addRow("Additional Dependencies:", self.additional_deps)
-        
-        layout.addWidget(self.advanced_group)
         layout.addStretch()
         
         self.update_command()
@@ -308,39 +292,137 @@ class CreateExperimentTab(QWidget):
         if self.update_config.isChecked():
             command += f"# Updating scripts/config/benchmark_config.json\n"
         
-        # Advanced options
-        if self.advanced_group.isChecked():
-            template_dir = self.template_dir.get_path()
-            if template_dir:
-                command += f"# Using custom template from: {template_dir}\n"
-            
-            deps = self.additional_deps.text()
-            if deps:
-                command += f"# Adding dependencies: {deps}\n"
-        
         self.command_changed.emit(command)
     
     def get_command(self) -> str:
         """Get the actual command to execute."""
-        # In a real implementation, we'd build a proper command
-        # For now, we just return a Python script that would create the experiment
         exp_name = self.exp_name_input.text().strip()
         if not exp_name:
             return ""
         
-        # This would be converted to a proper Python command that calls
-        # functions to create the experiment with the specified options
-        return f"python -c \"print('Creating experiment: {exp_name}'); import os; os.makedirs('experiments/{exp_name}/src', exist_ok=True); print('Done!')\""
+        # Build a real Python command that creates the experiment with all required files
+        cmd = f"""python -c \"
+import os
+import shutil
+from pathlib import Path
+
+# Create experiment directories
+exp_dir = Path('experiments/{exp_name}')
+src_dir = exp_dir / 'src'
+os.makedirs(src_dir, exist_ok=True)
+
+# Create benchmark.cpp
+if {str(self.create_benchmark_cpp.isChecked()).lower()}:
+    with open(src_dir / 'benchmark.cpp', 'w') as f:
+        f.write('''#include <benchmark/benchmark.h>
+
+// Simple benchmark function
+static void BM_{exp_name}(benchmark::State& state) {{
+    // Perform setup here
+    
+    for (auto _ : state) {{
+        // This code gets timed
+        benchmark::DoNotOptimize(0);
+    }}
+    
+    // Teardown
+}}
+
+// Register the benchmark
+BENCHMARK(BM_{exp_name});
+BENCHMARK_MAIN();
+''')
+
+# Create CMakeLists.txt
+with open(exp_dir / 'CMakeLists.txt', 'w') as f:
+    f.write('''cmake_minimum_required(VERSION 3.15)
+
+# Use our helper function to add this benchmark experiment
+add_benchmark_experiment(
+  NAME {exp_name}
+  SRCS ${{CMAKE_CURRENT_SOURCE_DIR}}/src/benchmark.cpp
+)
+''')
+
+# Create README.md.template
+with open(exp_dir / 'README.md.template', 'w') as f:
+    f.write('''# {exp_name.replace('_', ' ').title()} Benchmark
+
+This benchmark measures the performance of {exp_name.replace('_', ' ')} operations.
+
+## Configuration
+
+- Compiler: {{{{METADATA:compiler_version}}}}
+- Flags: `{{{{METADATA:config.cxx_flags_used}}}}`
+- Platform: {{{{METADATA:detailed_platform_id}}}}
+- CPU: {{{{METADATA:cpu_model}}}}
+
+## Benchmark Results
+
+{{{{GBENCH_TABLE}}}}
+
+{{{{GBENCH_CONSOLE_OUTPUT}}}}
+
+## Assembly Code
+
+```asm
+{{{{ASSEMBLY:BM_{exp_name}}}}}
+```
+
+## Performance Counters
+
+{{{{PERF_SUMMARY}}}}
+
+{{{{RELATED_LINKS}}}}
+''')
+
+# Update main CMakeLists.txt if needed
+if {str(self.update_cmake.isChecked()).lower()}:
+    main_cmake = Path('CMakeLists.txt')
+    if main_cmake.exists():
+        with open(main_cmake, 'r') as f:
+            content = f.read()
+        if 'add_subdirectory(experiments/{exp_name})' not in content:
+            with open(main_cmake, 'a') as f:
+                f.write('\\nadd_subdirectory(experiments/{exp_name})\\n')
+            print(f'Updated main CMakeLists.txt to include {exp_name}')
+
+# Update benchmark_config.json if needed
+if {str(self.update_config.isChecked()).lower()}:
+    import json
+    config_path = Path('scripts/config/benchmark_config.json')
+    if config_path.exists():
+        try:
+            with open(config_path, 'r') as f:
+                config = json.load(f)
+                
+            # Check if experiment already exists
+            exp_exists = False
+            for exp in config.get('experiments', []):
+                if exp.get('name') == '{exp_name}':
+                    exp_exists = True
+                    break
+                    
+            if not exp_exists:
+                config['experiments'].append({{'name': '{exp_name}'}})
+                
+                with open(config_path, 'w') as f:
+                    json.dump(config, f, indent=2)
+                print(f'Updated benchmark_config.json to include {exp_name}')
+        except Exception as e:
+            print(f'Error updating config: {{e}}')
+
+print(f'Created experiment: {exp_name}')
+\"
+"""
+        return cmd
     
     def clear_fields(self):
         """Clear all input fields."""
         self.exp_name_input.clear()
         self.create_benchmark_cpp.setChecked(True)
-        self.update_cmake.setChecked(False)
-        self.update_config.setChecked(False)
-        self.advanced_group.setChecked(False)
-        self.template_dir.set_path("")
-        self.additional_deps.clear()
+        self.update_cmake.setChecked(True)
+        self.update_config.setChecked(True)
 
 
 class RunBenchmarksTab(QWidget):
@@ -354,13 +436,24 @@ class RunBenchmarksTab(QWidget):
         # Main layout
         layout = QVBoxLayout(self)
         
+        # Config path selection (moved to top)
+        config_layout = QHBoxLayout()
+        config_layout.addWidget(QLabel("Config File:"))
+        
+        self.config_path = PathSelector(dialog_type="file", dialog_caption="Select Config File", 
+                                       file_filter="JSON Files (*.json)")
+        # Connect load_config_from_path first
+        self.config_path.path_changed.connect(self.load_config_from_path) 
+        
+        config_layout.addWidget(self.config_path)
+        layout.addLayout(config_layout)
+        
         # Experiment selection
         self.exp_group = QGroupBox("Experiment Selection")
         exp_layout = QVBoxLayout(self.exp_group)
         
         self.exp_list = QListWidget()
         self.exp_list.setSelectionMode(QListWidget.MultiSelection)
-        self.exp_list.itemSelectionChanged.connect(self.update_command)
         
         exp_buttons_layout = QHBoxLayout()
         self.select_all_exp = QPushButton("Select All")
@@ -382,7 +475,6 @@ class RunBenchmarksTab(QWidget):
         
         self.compiler_list = QListWidget()
         self.compiler_list.setSelectionMode(QListWidget.MultiSelection)
-        self.compiler_list.itemSelectionChanged.connect(self.update_command)
         
         compiler_buttons_layout = QHBoxLayout()
         self.select_all_compiler = QPushButton("Select All")
@@ -407,7 +499,6 @@ class RunBenchmarksTab(QWidget):
         self.build_flags.addItems([
             "Release_O3", "Debug_O0", "RelWithDebInfo_O2"
         ])
-        self.build_flags.currentTextChanged.connect(self.update_command)
         
         flags_layout.addWidget(self.build_flags)
         layout.addLayout(flags_layout)
@@ -416,44 +507,47 @@ class RunBenchmarksTab(QWidget):
         options_layout = QHBoxLayout()
         
         self.force_rerun = QCheckBox("Force Re-run")
-        self.force_rerun.stateChanged.connect(self.update_command)
         options_layout.addWidget(self.force_rerun)
         
         self.incremental_build = QCheckBox("Incremental Build")
-        self.incremental_build.stateChanged.connect(self.update_command)
         options_layout.addWidget(self.incremental_build)
         
         layout.addLayout(options_layout)
-        
-        # Custom config path
-        config_layout = QHBoxLayout()
-        config_layout.addWidget(QLabel("Custom Config:"))
-        
-        self.config_path = PathSelector(dialog_type="file", dialog_caption="Select Config File", 
-                                       file_filter="JSON Files (*.json)")
-        self.config_path.path_changed.connect(self.update_command)
-        
-        config_layout.addWidget(self.config_path)
-        layout.addLayout(config_layout)
         
         # Additional options (collapsible)
         self.advanced_group = QGroupBox("Additional Options")
         self.advanced_group.setCheckable(True)
         self.advanced_group.setChecked(False)
-        self.advanced_group.toggled.connect(self.update_command)
         
         advanced_layout = QVBoxLayout(self.advanced_group)
         
         self.extra_flags = QLineEdit()
         self.extra_flags.setPlaceholderText("Extra flags for run_benchmarks.py")
-        self.extra_flags.textChanged.connect(self.update_command)
         
         advanced_layout.addWidget(self.extra_flags)
         
         layout.addWidget(self.advanced_group)
         layout.addStretch()
         
-        self.load_config()
+        # Load config immediately from default path
+        default_config_path = str(PROJECT_ROOT / "scripts" / "config" / "benchmark_config.json")
+        self.config_path.set_path(default_config_path) # This might trigger load_config_from_path
+        
+        # Connect signals that trigger update_command *after* all widgets are created
+        self.config_path.path_changed.connect(self.update_command)
+        self.exp_list.itemSelectionChanged.connect(self.update_command)
+        self.compiler_list.itemSelectionChanged.connect(self.update_command)
+        self.build_flags.currentTextChanged.connect(self.update_command)
+        self.force_rerun.stateChanged.connect(self.update_command)
+        self.incremental_build.stateChanged.connect(self.update_command)
+        self.advanced_group.toggled.connect(self.update_command)
+        self.extra_flags.textChanged.connect(self.update_command)
+
+        # If load_config_from_path wasn't triggered by set_path, load manually
+        if self.exp_list.count() == 0: 
+            self.load_config() 
+            
+        # Perform initial command update
         self.update_command()
     
     def load_config(self):
@@ -461,6 +555,34 @@ class RunBenchmarksTab(QWidget):
         try:
             config_path = PROJECT_ROOT / "scripts" / "config" / "benchmark_config.json"
             with open(config_path, 'r') as f:
+                config = json.load(f)
+            
+            # Populate experiment list
+            self.exp_list.clear()
+            for exp in config.get('experiments', []):
+                if 'name' in exp:
+                    self.exp_list.addItem(exp['name'])
+            
+            # Populate compiler list
+            self.compiler_list.clear()
+            for compiler in config.get('compilers', []):
+                if 'name' in compiler:
+                    self.compiler_list.addItem(compiler['name'])
+            
+            # Select the first items by default
+            if self.exp_list.count() > 0:
+                self.exp_list.item(0).setSelected(True)
+            
+            if self.compiler_list.count() > 0:
+                self.compiler_list.item(0).setSelected(True)
+        
+        except Exception as e:
+            print(f"Error loading config: {e}")
+    
+    def load_config_from_path(self, path):
+        """Load configuration from a specified path."""
+        try:
+            with open(path, 'r') as f:
                 config = json.load(f)
             
             # Populate experiment list
