@@ -1,0 +1,1 @@
+"""Tabs module for BenchEverything UI."""
