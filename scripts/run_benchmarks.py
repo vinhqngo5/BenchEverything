@@ -102,76 +102,78 @@ def get_cpu_info():
     
     return cpu_info
 
-def get_compiler_version(compiler_name):
-    """Get the compiler version."""
+def get_compiler_version(compiler_path):
+    """Get the compiler version by running the actual compiler executable.
+    
+    Args:
+        compiler_path: The path to the compiler executable from the toolchain file
+        
+    Returns:
+        The version string, or "unknown" if it can't be determined
+    """
     version = "unknown"
     
-    if compiler_name.lower() == "gcc":
-        try:
-            result = subprocess.run(
-                ["g++", "--version"],
-                capture_output=True,
-                text=True,
-                check=False
-            )
-            if result.returncode == 0:
-                # Extract version like 11.2.0 from output
-                version_match = re.search(r'(\d+\.\d+\.\d+)', result.stdout)
-                if version_match:
-                    version = version_match.group(1)
-                else:
-                    # Fallback to first line if regex doesn't match
-                    version = result.stdout.split('\n')[0].strip()
-        except (subprocess.SubprocessError, FileNotFoundError):
-            pass
-    
-    elif compiler_name.lower() == "clang":
-        try:
-            result = subprocess.run(
-                ["clang++", "--version"],
-                capture_output=True,
-                text=True,
-                check=False
-            )
-            if result.returncode == 0:
-                # Extract version like 14.0.0 from output
-                version_match = re.search(r'(\d+\.\d+\.\d+)', result.stdout)
-                if version_match:
-                    version = version_match.group(1)
-                else:
-                    # Fallback to first line if regex doesn't match
-                    version = result.stdout.split('\n')[0].strip()
-        except (subprocess.SubprocessError, FileNotFoundError):
-            pass
-    
-    # Clean up version for path use
-    version = re.sub(r'[^a-zA-Z0-9\.-]', '-', version)
+    try:
+        # Run the compiler with --version flag
+        result = subprocess.run(
+            [compiler_path, "--version"],
+            capture_output=True,
+            text=True,
+            check=False
+        )
+        
+        if result.returncode == 0:
+            # Extract version like 11.2.0 from output
+            version_match = re.search(r'(\d+\.\d+\.\d+)', result.stdout)
+            if version_match:
+                version = version_match.group(1)
+            else:
+                # Fallback to first line if regex doesn't match
+                version = result.stdout.split('\n')[0].strip()
+                # Clean up version for path use
+                version = re.sub(r'[^a-zA-Z0-9\.-]', '-', version)
+    except (subprocess.SubprocessError, FileNotFoundError) as e:
+        logger.warning(f"Could not determine version for compiler at {compiler_path}: {e}")
     
     return version
 
-def generate_metadata_hash(compiler_name, build_flags_id, additional_metadata=None):
+def generate_metadata_hash(compiler_config, build_flags_id, additional_metadata=None):
     """Generate a hash based on metadata.
     
     Args:
-        compiler_name: The compiler name (e.g., 'gcc', 'clang')
+        compiler_config: The compiler configuration dictionary
         build_flags_id: Build flags identifier (e.g., 'Release_O3')
         additional_metadata: Optional dictionary containing additional metadata to include in the hash
         
     Returns:
-        Tuple of (short_hash, metadata_str, detailed_platform_id)
+        Tuple of (short_hash, metadata_str, detailed_platform_id, detailed_compiler_id)
     """
     # Get system information
     system = platform.system().lower()
     machine = platform.machine()
     cpu = get_cpu_info()
-    compiler_version = get_compiler_version(compiler_name)
+    
+    # Extract the actual compiler path and type from the toolchain file
+    toolchain_path = os.path.join(PROJECT_ROOT, compiler_config['toolchain_file'])
+    compiler_path, compiler_type = extract_compiler_from_toolchain(toolchain_path)
+    
+    # Get compiler version using the actual compiler path
+    if compiler_path:
+        compiler_version = get_compiler_version(compiler_path)
+    else:
+        logger.warning(f"Could not extract compiler path from {toolchain_path}, using default version")
+        compiler_version = "unknown"
+    
+    # Use the canonical compiler type (gcc/clang) if available, otherwise use the name from config
+    canonical_compiler_name = compiler_type if compiler_type else compiler_config['name']
     
     # Create metadata dictionary with standard fields
     metadata = {
         "system": system,
         "machine": machine,
         "cpu": cpu,
-        "compiler_name": compiler_name,
+        "compiler_name": compiler_config['name'],
+        "compiler_type": canonical_compiler_name,
         "compiler_version": compiler_version,
         "build_flags_id": build_flags_id
     }
@@ -193,8 +195,8 @@ def generate_metadata_hash(compiler_name, build_flags_id, additional_metadata=No
     # Create a more detailed platform ID for directory structure
     detailed_platform_id = f"{system}-{machine}-{cpu}"
     
-    # Create a compiler id that includes version
-    detailed_compiler_id = f"{compiler_name}-{compiler_version}"
+    # Create a compiler id that includes version - use canonical name where possible
+    detailed_compiler_id = f"{canonical_compiler_name}-{compiler_version}"
     
     return short_hash, metadata_str, detailed_platform_id, detailed_compiler_id
 
@@ -266,7 +268,7 @@ def build_benchmark(compiler_config, build_flags_id="Release_O3", incremental=Fa
     
     # Generate a hash based on metadata to ensure consistency with run_benchmark
     _, _, detailed_platform_id, detailed_compiler_id = generate_metadata_hash(
-        compiler_config['name'], 
+        compiler_config, 
         build_flags_id
     )
     
@@ -329,8 +331,16 @@ def create_metadata(experiment, compiler_config, build_flags_id, cxx_flags, cmak
     # Additional CPU specific information 
     cpu_info = get_cpu_info()
     
-    # Extract compiler version for easier access in reports
-    compiler_version = get_compiler_version(compiler_config['name'])
+    # Extract the actual compiler path and type from the toolchain file
+    toolchain_path = os.path.join(PROJECT_ROOT, compiler_config['toolchain_file'])
+    compiler_path, compiler_type = extract_compiler_from_toolchain(toolchain_path)
+    
+    # Get compiler version using the actual compiler path
+    if compiler_path:
+        compiler_version = get_compiler_version(compiler_path)
+    else:
+        logger.warning(f"Could not extract compiler path from {toolchain_path}, using unknown version")
+        compiler_version = "unknown"
     
     timestamp = datetime.datetime.now().isoformat()
     
@@ -342,14 +352,16 @@ def create_metadata(experiment, compiler_config, build_flags_id, cxx_flags, cmak
         "detailed_compiler_id": detailed_compiler_id,
         "platform_id": f"{platform.system().lower()}-{platform.machine()}",
         "compiler_id": compiler_config['name'],
-        "compiler_version": compiler_version,  # Add compiler version directly at the top level
+        "compiler_version": compiler_version,
         "build_flags_id": build_flags_id,
         "cpu_model": cpu_info,
         "environment": system_info,
         "config": {
             "cmake_build_type": cmake_build_type,
             "cxx_flags_used": cxx_flags,
-            "compiler_version": compiler_version,  # Also add to config for backward compatibility
+            "compiler_version": compiler_version,
+            "compiler_path": compiler_path,
+            "compiler_type": compiler_type,
             "toolchain_file": compiler_config['toolchain_file'],
             "gbench_command": f"{experiment['benchmark_executable']} --benchmark_format=json --benchmark_out=..."
         }
@@ -860,7 +872,7 @@ def run_benchmark(experiment, build_dir, compiler_config, build_flags_id="Releas
     
     # Generate a hash based on metadata
     metadata_hash, metadata_str, detailed_platform_id, detailed_compiler_id = generate_metadata_hash(
-        compiler_config['name'], 
+        compiler_config, 
         build_flags_id
     )
     
@@ -949,6 +961,41 @@ def run_benchmark(experiment, build_dir, compiler_config, build_flags_id="Releas
     logger.info(f"Results saved to {results_dir}")
     return results_dir
 
+def extract_compiler_from_toolchain(toolchain_file_path):
+    """Extract the actual compiler path and type from a toolchain file.
+    
+    Args:
+        toolchain_file_path: Path to the toolchain file
+        
+    Returns:
+        Tuple of (compiler_path, compiler_type) where compiler_type is 'gcc', 'clang', or None
+    """
+    try:
+        with open(toolchain_file_path, 'r') as f:
+            content = f.read()
+            
+        # Look for the C++ compiler definition
+        match = re.search(r'set\(CMAKE_CXX_COMPILER\s+([^\)]+)\)', content)
+        if match:
+            compiler_path = match.group(1).strip()
+            # Remove quoted strings if present
+            compiler_path = compiler_path.strip('"\'')
+            
+            # Determine the compiler type based on the path or name
+            compiler_type = None
+            if "g++" in compiler_path:
+                compiler_type = "gcc"
+            elif "clang++" in compiler_path:
+                compiler_type = "clang"
+                
+            return compiler_path, compiler_type
+        else:
+            logger.warning(f"No C++ compiler definition found in {toolchain_file_path}")
+            return None, None
+    except Exception as e:
+        logger.warning(f"Error extracting compiler from toolchain file {toolchain_file_path}: {e}")
+        return None, None
+
 def main():
     """Main function to run benchmarks and generate reports."""
     
@@ -956,8 +1003,8 @@ def main():
     parser = argparse.ArgumentParser(description='Run benchmarks and generate reports')
     parser.add_argument('--config', 
                         help='Path to a custom configuration file (default: benchmark_config.json)')
-    parser.add_argument('--compiler', choices=['gcc', 'clang', 'all'], default='all',
-                        help='Compiler to use for benchmarks (default: all)')
+    parser.add_argument('--compiler', 
+                        help='Comma-separated list of compilers to use (default: all)')
     parser.add_argument('--experiments', 
                         help='Comma-separated list of experiments to run (default: all)')
     parser.add_argument('--build-flags', default='Release_O3',
@@ -972,7 +1019,32 @@ def main():
     config = load_config(args.config)
     
     # Filter compilers based on command-line arguments
-    compilers = [c for c in config['compilers'] if args.compiler == 'all' or c['name'] == args.compiler]
+    compilers = []
+    if args.compiler:
+        # Parse comma-separated list of compiler names
+        requested_compilers = args.compiler.split(',')
+        
+        # For each compiler in config, extract its actual compiler type from toolchain
+        for compiler_config in config['compilers']:
+            # Extract the actual compiler path and type from the toolchain file
+            toolchain_path = os.path.join(PROJECT_ROOT, compiler_config['toolchain_file'])
+            compiler_path, compiler_type = extract_compiler_from_toolchain(toolchain_path)
+            
+            # If config name is in the requested list, use it
+            if compiler_config['name'] in requested_compilers:
+                compilers.append(compiler_config)
+                logger.info(f"Using compiler: {compiler_config['name']} (path: {compiler_path}, type: {compiler_type})")
+            # Or if compiler type matches a requested compiler
+            elif compiler_type and compiler_type in requested_compilers:
+                compilers.append(compiler_config)
+                logger.info(f"Using compiler: {compiler_config['name']} (identified as {compiler_type})")
+    else:
+        # Use all compilers if none specified
+        compilers = config['compilers']
+        
+    if not compilers:
+        logger.warning(f"No matching compilers found for: {args.compiler}")
+        return
     
     # Filter experiments based on command-line arguments
     if args.experiments:

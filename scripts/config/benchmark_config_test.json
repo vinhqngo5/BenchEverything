@@ -1,0 +1,34 @@
+{
+  "compilers": [
+    {
+      "name": "gcc_test",
+      "toolchain_file": "cmake/toolchains/gcc.cmake",
+      "build_dir": "build/gcc"
+    },
+    {
+      "name": "clang_test",
+      "toolchain_file": "cmake/toolchains/clang.cmake",
+      "build_dir": "build/clang"
+    }
+  ],
+  "experiments": [
+    {
+      "name": "int_addition",
+      "benchmark_executable": "int_addition_benchmark",
+      "template_file": "experiments/int_addition/README.md.template",
+      "output_file": "reports/int_addition_report.md"
+    },
+    {
+      "name": "float_addition",
+      "benchmark_executable": "float_addition_benchmark",
+      "template_file": "experiments/float_addition/README.md.template",
+      "output_file": "reports/float_addition_report.md"
+    },
+    {
+      "name": "container_push_back",
+      "benchmark_executable": "container_push_back_benchmark",
+      "template_file": "experiments/container_push_back/README.md.template",
+      "output_file": "reports/container_push_back_report.md"
+    }
+  ]
+}
