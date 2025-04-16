@@ -1,6 +1,6 @@
 {
   "context": {
-    "date": "2025-04-16T17:17:02+02:00",
+    "date": "2025-04-16T18:01:35+02:00",
     "host_name": "CM-K6R9HXDHXQ",
     "executable": "/Users/vinhq/Library/CloudStorage/OneDrive-Chalmers/Desktop/Q22025/BenchEverything/build/darwin-arm64-Apple-M3-Pro/clang-15.0.0/Debug_O0/experiments/float_addition/float_addition_benchmark",
     "num_cpus": 11,
@@ -26,7 +26,7 @@
         "num_sharing": 1
       }
     ],
-    "load_avg": [15.8721,8.15381,6.45459],
+    "load_avg": [15.3931,9.09717,7.20947],
     "library_build_type": "debug"
   },
   "benchmarks": [
@@ -39,9 +39,9 @@
       "repetitions": 1,
       "repetition_index": 0,
       "threads": 1,
-      "iterations": 311947129,
-      "real_time": 2.1958825272341609e+00,
-      "cpu_time": 2.1928780117094782e+00,
+      "iterations": 328314807,
+      "real_time": 2.0706343469809805e+00,
+      "cpu_time": 2.0674151318432616e+00,
       "time_unit": "ns"
     }
   ]

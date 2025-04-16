@@ -15,7 +15,7 @@ This benchmark measures the performance of simple floating-point addition operat
 
 | Benchmark | Time (ns) | CPU (ns) | Iterations | Unit | Threads | Reps |
 | --------- | --------- | -------- | ---------- | ---- | ------- | ---- |
-| BM_FloatAddition | 2.20 | 2.19 | 311947129 | ns | 1 | 1 |
+| BM_FloatAddition | 2.07 | 2.07 | 328314807 | ns | 1 | 1 |
 
 
 ## Assembly Code

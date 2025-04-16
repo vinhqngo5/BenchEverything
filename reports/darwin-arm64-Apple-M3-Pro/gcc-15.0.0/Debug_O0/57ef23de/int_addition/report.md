@@ -13,7 +13,7 @@ This benchmark measures the performance of simple integer addition operations.
 
 | Benchmark | Time (ns) | CPU (ns) | Iterations | Unit | Threads | Reps |
 | --------- | --------- | -------- | ---------- | ---- | ------- | ---- |
-| BM_IntAddition | 2.09 | 2.09 | 309685183 | ns | 1 | 1 |
+| BM_IntAddition | 2.12 | 2.12 | 321985639 | ns | 1 | 1 |
 
 
 {{GBENCH_CONSOLE_OUTPUT}}
