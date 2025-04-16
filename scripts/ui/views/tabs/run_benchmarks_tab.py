@@ -118,7 +118,7 @@ class RunBenchmarksTab(QWidget):
         layout.addStretch()
         
         # Load config immediately from default path
-        default_config_path = str(PROJECT_ROOT / "scripts" / "config" / "benchmark_config.json")
+        default_config_path = str(PROJECT_ROOT / "config" / "benchmark_config.json")
         self.config_path.set_path(default_config_path) # This might trigger load_config_from_path
         
         # Connect signals that trigger update_command *after* all widgets are created

@@ -105,18 +105,54 @@ class PipelineTab(QWidget):
         """Move the selected step up in the pipeline."""
         current_row = self.steps_list.currentRow()
         if current_row > 0:
+            # Save the current widget before removing the item
+            current_item = self.steps_list.item(current_row)
+            current_widget = self.steps_list.itemWidget(current_item)
+            
+            # Get the size hint to set in the new position
+            size_hint = current_item.sizeHint()
+            
+            # Take the item out of the list
             current_item = self.steps_list.takeItem(current_row)
+            
+            # Insert it at the new position
             self.steps_list.insertItem(current_row - 1, current_item)
+            
+            # Re-set the widget and size hint
+            self.steps_list.setItemWidget(current_item, current_widget)
+            current_item.setSizeHint(size_hint)
+            
+            # Update selection
             self.steps_list.setCurrentRow(current_row - 1)
+            
+            # Update command preview
             self.update_command()
     
     def move_step_down(self):
         """Move the selected step down in the pipeline."""
         current_row = self.steps_list.currentRow()
         if current_row < self.steps_list.count() - 1:
+            # Save the current widget before removing the item
+            current_item = self.steps_list.item(current_row)
+            current_widget = self.steps_list.itemWidget(current_item)
+            
+            # Get the size hint to set in the new position
+            size_hint = current_item.sizeHint()
+            
+            # Take the item out of the list
             current_item = self.steps_list.takeItem(current_row)
+            
+            # Insert it at the new position
             self.steps_list.insertItem(current_row + 1, current_item)
+            
+            # Re-set the widget and size hint
+            self.steps_list.setItemWidget(current_item, current_widget)
+            current_item.setSizeHint(size_hint)
+            
+            # Update selection
             self.steps_list.setCurrentRow(current_row + 1)
+            
+            # Update command preview
             self.update_command()
     
     def save_pipeline(self):
