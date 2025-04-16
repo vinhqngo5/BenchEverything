@@ -1,3 +1,4 @@
+![BenchEverything Banner](assets/banner.png)
 # BenchEverything Project Documentation
 
 ## Table of Contents
