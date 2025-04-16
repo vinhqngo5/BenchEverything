@@ -13,6 +13,7 @@
    * [4.3. Creating a New Benchmark](#43-creating-a-new-benchmark)
    * [4.4. Generating Reports](#44-generating-reports)
    * [4.5. Cross-Machine Workflow](#45-cross-machine-workflow)
+   * [4.6. Using the UI Tool](#46-using-the-ui-tool)
 * [5. Creating and Managing Experiments](#5-creating-and-managing-experiments)
    * [5.1. Experiment Structure](#51-experiment-structure)
    * [5.2. Writing Benchmark Code](#52-writing-benchmark-code)
@@ -106,6 +107,8 @@ BenchEverything/
 ├── .gitignore
 ├── README.md # Top-level project info, setup
 ├── CMakeLists.txt # Root CMakeLists, finds common dependencies (like GBench), includes experiments/
+├── assets/ # Assets for documentation and UI
+│   └── ui/ # Screenshots of the UI tool
 ├── cmake/ # CMake helper modules
 │   ├── BenchmarkUtils.cmake # Helper add_benchmark_experiment function
 │   ├── Dependencies.cmake # (Optional) Centralized FetchContent_Declare for common libs
@@ -115,6 +118,23 @@ BenchEverything/
 │   ├── generate_report.py # Script to generate a single markdown report from one result
 │   ├── generate_combined_report.py # Script to generate summary/comparison reports
 │   ├── config/ # Configuration files (e.g., YAML/JSON) for run_benchmarks.py (currently supported JSON files)
+│   ├── lib/ # Python library modules for scripts
+│   │   ├── __init__.py
+│   │   ├── assembly.py
+│   │   ├── config.py
+│   │   ├── data_loader.py
+│   │   ├── environment.py
+│   │   ├── logger.py
+│   │   ├── metadata.py
+│   │   ├── report_utils.py
+│   │   ├── runner.py
+│   │   └── template.py
+│   ├── ui/ # UI tool code and resources
+│   │   ├── DESIGN.md # Design document for the UI tool
+│   │   ├── main.py # Main entry point for the UI
+│   │   ├── models/ # Data models for the UI
+│   │   ├── views/ # UI views and components
+│   │   └── utils/ # Utility functions for the UI
 │   └── requirements.txt # Python dependencies (PyYAML, matplotlib, pandas, etc.)
 ├── third_party/ # Dependencies managed via FetchContent or submodules (GBench often here)
 ├── experiments/ # === Individual Benchmarks ===
@@ -430,6 +450,55 @@ To benchmark across different machines or environments:
 
 This workflow allows tracking performance across different hardware, compilers, and environments. See [Section 6.6](#66-result-directory-structure) for details on how results are organized.
 
+### 4.6. Using the UI Tool
+
+BenchEverything includes a graphical user interface that makes it easier to create experiments, run benchmarks, and generate reports without using the command line.
+
+#### Starting the UI Tool
+
+To start the UI tool:
+
+```bash
+python scripts/ui/main.py
+```
+
+#### UI Features
+
+The UI tool provides four main tabs:
+
+1. **Create Experiment** - Create new benchmark experiments with proper structure
+2. **Run Benchmarks** - Configure and run benchmarks with different compilers and flags
+3. **Generate Reports** - Generate reports from benchmark results
+4. **Combined Reports** - Create comparison reports across multiple configurations
+
+<table>
+  <thead>
+    <tr>
+      <th>Create Experiment Tab</th>
+      <th>Run Benchmarks Tab</th>
+      <th>Generate Reports Tab</th>
+      <th>Combined Reports Tab</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><img src="assets/ui/create_experiment.png" alt="Create Experiment Tab"></td>
+      <td><img src="assets/ui/run_benchmarks.png" alt="Run Benchmarks Tab"></td>
+      <td><img src="assets/ui/generate_reports.png" alt="Generate Reports Tab"></td>
+      <td><img src="assets/ui/combined_reports.png" alt="Combined Reports Tab"></td>
+    </tr>
+  </tbody>
+</table>
+
+Each tab corresponds to a command-line script but provides a more user-friendly interface. The UI tool displays the equivalent command that would be run, making it a great way to learn the command-line interface while using the graphical tool.
+
+For details on what each parameter means, refer to the corresponding sections in this documentation:
+- For Run Benchmarks options, see [Section 6.1](#61-command-line-options)
+- For Report Generation options, see [Section 7.1](#71-single-report-generation-generate_reportpy)
+- For Combined Reports options, see [Section 7.2](#72-combined-report-generation-generate_combined_reportpy)
+
+For more information on the UI tool design and implementation, see the [UI Design Document](scripts/ui/DESIGN.md).
+
 ---
 
 ## 5. Creating and Managing Experiments
@@ -619,7 +688,7 @@ def main():
     plt.savefig(output_dir / "performance_plot.png", dpi=300)
     print(f"Plot saved to {output_dir / 'performance_plot.png'}")
 
-if __name__ == "__main__":
+if (name == "__main__"):
     main()
 ```
 
