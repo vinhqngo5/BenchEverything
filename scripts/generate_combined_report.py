@@ -853,8 +853,6 @@ def main():
     parser = argparse.ArgumentParser(description='Generate a combined comparison report from benchmark results')
     parser.add_argument('--baseline', required=True,
                         help='Path to the baseline result directory')
-    parser.add_argument('--contender', 
-                        help='Path to a single contender result directory')
     parser.add_argument('--contenders',
                         help='Comma-separated list of paths to multiple contender result directories')
     parser.add_argument('--experiments',
@@ -864,16 +862,18 @@ def main():
     args = parser.parse_args()
     
     # Ensure we have at least one contender specified
-    if not args.contender and not args.contenders:
-        logger.error("Either --contender or --contenders must be specified")
+    if not args.contenders:
+        logger.error("At least one contender must be specified")
         sys.exit(1)
     
-    # Process contenders: combine single contender and multiple contenders if both are provided
+    # Process contenders: combine multiple contenders into a list
     contenders = []
-    if args.contender:
-        contenders.append(args.contender)
-    if args.contenders:
-        contenders.extend(args.contenders.split(','))
+    contenders.extend(args.contenders.split(','))
+    
+
+    experiment_names = None
+    if args.experiments:
+        experiment_names = args.experiments.split(',')
     
     # Get experiment names
     experiment_names = None

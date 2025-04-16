@@ -992,48 +992,45 @@ This ensures that reports are generated even if some data is missing or processi
 
 ### 7.2. Combined Report Generation (`generate_combined_report.py`)
 
-The `scripts/generate_combined_report.py` script generates reports that compare results across different configurations:
+The `scripts/generate_combined_report.py` script generates reports that compare results between a baseline and one or more contender configurations:
 
 ```bash
-# Compare results between GCC and Clang
-python scripts/generate_combined_report.py --type comparison --compare-configs gcc,clang
-
-# Compare results between different optimization levels
-python scripts/generate_combined_report.py --type comparison --compare-flags Debug_O0,Release_O3
-
-# Compare GCC vs. Clang (single contender)
-python scripts/generate_combined_report.py --baseline results/darwin-arm64-Apple-M3-Pro/gcc-15.0.0/Debug_O0/845f2637 --contender results/darwin-arm64-Apple-M3-Pro/clang-20.1.2/Release_O3/0528a2c3
+# Compare with a single contender (baseline vs. contender)
+python scripts/generate_combined_report.py --baseline results/darwin-arm64-Apple-M3-Pro/gcc-15.0.0/Release_O3/845f2637 --contenders results/darwin-arm64-Apple-M3-Pro/clang-20.1.2/Release_O3/0528a2c3
 
 # Compare with multiple contenders simultaneously
-python scripts/generate_combined_report.py --baseline results/darwin-arm64-Apple-M3-Pro/gcc-15.0.0/Debug_O0/845f2637 --contenders results/darwin-arm64-Apple-M3-Pro/gcc-15.0.0/Release_O3/26359d46,results/darwin-arm64-Apple-M3-Pro/clang-20.1.2/Release_O3/0528a2c3
+python scripts/generate_combined_report.py --baseline results/darwin-arm64-Apple-M3-Pro/gcc-15.0.0/Release_O3/845f2637 --contenders results/darwin-arm64-Apple-M3-Pro/clang-20.1.2/Release_O3/0528a2c3,results/darwin-arm64-Apple-M3-Pro/clang-15.0.0/Release_O3/2fd3a147
+
+# Specify particular experiments to include
+python scripts/generate_combined_report.py --baseline results/darwin-arm64-Apple-M3-Pro/gcc-15.0.0/Release_O3/845f2637 --contenders results/darwin-arm64-Apple-M3-Pro/clang-20.1.2/Release_O3/0528a2c3 --experiments int_addition,float_addition
+
+# Specify a custom output directory for the report
+python scripts/generate_combined_report.py --baseline results/darwin-arm64-Apple-M3-Pro/gcc-15.0.0/Release_O3/845f2637 --contenders results/darwin-arm64-Apple-M3-Pro/clang-20.1.2/Release_O3/0528a2c3 --output-dir reports/custom_comparisons
 ```
 
-The generated reports will be in the `reports/` directory. For more options, see [Generating Reports](#7-generating-reports).
+The combined report generator:
+1. Takes a baseline result directory as the reference point
+2. Compares one or more contender result directories against the baseline
+3. Optionally filters to specific experiments with `--experiments`
+4. Creates a combined report showing relative performance differences
+5. Generates visualizations showing comparison data
+6. Places the generated report in a appropriate location under the `reports/` directory (or a custom location if specified)
 
-#### 7.2.1. Report Types
+The generated reports are particularly useful for:
+- Comparing compiler performance (e.g., GCC vs. Clang)
+- Comparing optimization levels (e.g., -O0 vs. -O3)
+- Comparing different hardware platforms
+- Evaluating the impact of code changes across multiple benchmarks
 
-The script supports two types of reports:
+#### 7.2.1. Comparison Assets
 
-1. **Summary Reports**:
-   - Summarize results for all experiments within a single configuration
-   - Provide an overview of performance metrics
-   - Identify outliers or anomalies
+Combined reports include visualizations and data files that compare results:
 
-2. **Comparison Reports**:
-   - Compare results across different configurations
-   - Visualize performance differences
-   - Calculate speedup/slowdown percentages
-   - Identify which configuration performs better for each experiment
-
-#### 7.2.2. Comparison Assets
-
-Comparison reports include visualizations and data files that compare results:
-
-- Bar charts comparing performance metrics
 - Tables showing relative performance
-- Heatmaps highlighting significant differences
+- Bar charts comparing performance metrics (future work) 
+- Heatmaps highlighting significant differences (future work)
 
-These assets are saved to a dedicated directory:
+These assets are saved to a dedicated directory within the reports structure:
 
 ```
 reports/
@@ -1048,36 +1045,6 @@ reports/
                             ├── performance_comparison.png
                             └── speedup_table.csv
 ```
-
-### 7.3. Godbolt Integration
-
-The reports can include links to view the code on [Godbolt Compiler Explorer](https://godbolt.org/), allowing users to interactively explore the code and its assembly.
-
-To integrate with Godbolt:
-
-1. Add a link in the report template:
-   ```markdown
-   [View on Godbolt](https://godbolt.org/#g:!((g:!((g:!((h:codeEditor,i:(filename:'benchmark.cpp',fontScale:14,fontUsePx:'0',j:1,lang:c%2B%2B,source:'{{SOURCE_CODE}}'),l:'0',n:'0',o:'C%2B%2B+source+%231',t:'0')),k:50,l:'0',n:'0',o:'',t:'0'),(g:!((h:compiler,i:(compiler:{{COMPILER_ID}},filters:(b:'0',binary:'1',commentOnly:'0',demangle:'0',directives:'0',execute:'1',intel:'0',libraryCode:'0',trim:'1'),flagsViewOpen:'1',fontScale:14,fontUsePx:'0',j:1,lang:c%2B%2B,libs:!((name:benchmark,ver:trunk)),options:'{{COMPILER_FLAGS}}',source:1),l:'0',n:'0',o:'{{COMPILER_TEXT}}',t:'0')),k:50,l:'0',n:'0',o:'',t:'0')),l:'0',n:'0',o:'',t:'0'),version:4)
-   ```
-
-2. Replace the placeholders:
-   - `{{SOURCE_CODE}}`: URL-encoded source code
-   - `{{COMPILER_ID}}`: Godbolt compiler ID (e.g., `g122` for GCC 12.2)
-   - `{{COMPILER_FLAGS}}`: Compiler flags used
-   - `{{COMPILER_TEXT}}`: Display text for the compiler
-
-Alternatively, add instructions for manual setup:
-
-```markdown
-## Godbolt Integration
-
-[View on Godbolt (Manual Setup Required)](https://godbolt.org/)
-1. Copy the benchmark code
-2. Select {{METADATA:compiler_id}} {{METADATA:compiler_version}}
-3. Add the Google Benchmark library
-4. Set compiler flags: {{METADATA:config.cxx_flags_used}}
-```
-
 ---
 
 ## 8. Extensibility Guide

@@ -2,7 +2,7 @@
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
-    QCheckBox, QGroupBox, QRadioButton, QLineEdit,
+    QCheckBox, QGroupBox, QLineEdit,
     QListWidget, QPushButton, QFileDialog
 )
 from PySide6.QtCore import Signal
@@ -21,22 +21,6 @@ class CombinedReportTab(QWidget):
         
         # Main layout
         layout = QVBoxLayout(self)
-        
-        # Report type
-        type_group = QGroupBox("Report Type")
-        type_layout = QHBoxLayout(type_group)
-        
-        self.type_comparison = QRadioButton("Comparison")
-        self.type_comparison.setChecked(True)
-        self.type_comparison.toggled.connect(self.update_command)
-        
-        self.type_summary = QRadioButton("Summary")
-        self.type_summary.toggled.connect(self.update_command)
-        
-        type_layout.addWidget(self.type_comparison)
-        type_layout.addWidget(self.type_summary)
-        
-        layout.addWidget(type_group)
         
         # Baseline directory
         baseline_layout = QHBoxLayout()
@@ -70,43 +54,18 @@ class CombinedReportTab(QWidget):
         
         layout.addWidget(contender_group)
         
-        # Comparison options
-        comp_group = QGroupBox("Comparison Options")
-        comp_layout = QVBoxLayout(comp_group)
+        # Experiment selection
+        exp_group = QGroupBox("Experiment Selection")
+        exp_layout = QVBoxLayout(exp_group)
         
-        # Compare by options
-        compare_by_layout = QHBoxLayout()
-        compare_by_layout.addWidget(QLabel("Compare by:"))
+        exp_layout.addWidget(QLabel("Comma-separated list of experiments to include (leave empty for all):"))
+        self.experiments = QLineEdit()
+        self.experiments.setPlaceholderText("e.g., int_addition,float_addition,container_push_back")
+        self.experiments.textChanged.connect(self.update_command)
         
-        self.compare_configs = QRadioButton("Configurations")
-        self.compare_configs.setChecked(True)
-        self.compare_configs.toggled.connect(self.update_command)
+        exp_layout.addWidget(self.experiments)
         
-        self.compare_flags = QRadioButton("Flags")
-        self.compare_flags.toggled.connect(self.update_command)
-        
-        self.compare_platforms = QRadioButton("Platforms")
-        self.compare_platforms.toggled.connect(self.update_command)
-        
-        compare_by_layout.addWidget(self.compare_configs)
-        compare_by_layout.addWidget(self.compare_flags)
-        compare_by_layout.addWidget(self.compare_platforms)
-        
-        comp_layout.addLayout(compare_by_layout)
-        
-        # Specific configurations
-        specific_layout = QHBoxLayout()
-        specific_layout.addWidget(QLabel("Specific Items:"))
-        
-        self.specific_configs = QLineEdit()
-        self.specific_configs.setPlaceholderText("e.g., gcc,clang or Debug_O0,Release_O3")
-        self.specific_configs.textChanged.connect(self.update_command)
-        
-        specific_layout.addWidget(self.specific_configs)
-        
-        comp_layout.addLayout(specific_layout)
-        
-        layout.addWidget(comp_group)
+        layout.addWidget(exp_group)
         
         # Output options
         output_group = QGroupBox("Output Options")
@@ -150,12 +109,6 @@ class CombinedReportTab(QWidget):
         """Update the command preview based on current settings."""
         command = "python scripts/generate_combined_report.py"
         
-        # Report type
-        if self.type_comparison.isChecked():
-            command += " --type comparison"
-        else:
-            command += " --type summary"
-        
         # Baseline directory
         baseline_dir = self.baseline_dir.get_path()
         if baseline_dir:
@@ -171,23 +124,14 @@ class CombinedReportTab(QWidget):
         
         if contenders:
             command += f" --contenders {','.join(contenders)}"
+        else:
+            self.command_changed.emit("# Please add at least one contender directory")
+            return
         
-        # Comparison options
-        if self.compare_configs.isChecked():
-            command += " --compare-configs"
-        elif self.compare_flags.isChecked():
-            command += " --compare-flags"
-        elif self.compare_platforms.isChecked():
-            command += " --compare-platforms"
-        
-        specific = self.specific_configs.text()
-        if specific:
-            if self.compare_configs.isChecked():
-                command += f" {specific}"
-            elif self.compare_flags.isChecked():
-                command += f" {specific}"
-            elif self.compare_platforms.isChecked():
-                command += f" {specific}"
+        # Experiments
+        experiments = self.experiments.text().strip()
+        if experiments:
+            command += f" --experiments {experiments}"
         
         # Output directory
         output_dir = self.output_dir.get_path()
@@ -199,12 +143,6 @@ class CombinedReportTab(QWidget):
     def get_command(self) -> str:
         """Get the command to execute."""
         command = "python scripts/generate_combined_report.py"
-        
-        # Report type
-        if self.type_comparison.isChecked():
-            command += " --type comparison"
-        else:
-            command += " --type summary"
         
         # Baseline directory
         baseline_dir = self.baseline_dir.get_path()
@@ -220,23 +158,13 @@ class CombinedReportTab(QWidget):
         
         if contenders:
             command += f" --contenders {','.join(contenders)}"
+        else:
+            return ""  # Invalid command
         
-        # Comparison options
-        if self.compare_configs.isChecked():
-            command += " --compare-configs"
-        elif self.compare_flags.isChecked():
-            command += " --compare-flags"
-        elif self.compare_platforms.isChecked():
-            command += " --compare-platforms"
-        
-        specific = self.specific_configs.text()
-        if specific:
-            if self.compare_configs.isChecked():
-                command += f" {specific}"
-            elif self.compare_flags.isChecked():
-                command += f" {specific}"
-            elif self.compare_platforms.isChecked():
-                command += f" {specific}"
+        # Experiments
+        experiments = self.experiments.text().strip()
+        if experiments:
+            command += f" --experiments {experiments}"
         
         # Output directory
         output_dir = self.output_dir.get_path()

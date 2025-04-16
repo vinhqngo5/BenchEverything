@@ -113,15 +113,13 @@ The UI is organized around a tabbed interface with common controls:
 
 #### 4. Combined Reports Tab
 
-**Purpose**: Generate comparison reports between different configurations.
+**Purpose**: Generate comparison reports between different benchmark configurations.
 
 **Controls**:
-- Report Type: Radio buttons (Comparison, Summary)
-- Baseline Directory: Path selector
-- Contender Directories: List widget with Add/Remove buttons
-- Comparison Options:
-  - Compare by: Radio buttons (Configurations, Flags, Platforms)
-  - Specific configurations: Text input
+- Baseline Directory: Path selector for selecting the baseline results
+- Contender Directories: List widget with Add/Remove buttons for selecting one or more contenders
+- Experiment Selection: 
+  - Text input for comma-separated list of experiments to include (empty for all)
 - Output Options:
   - Custom output directory: Path selector
   - Open reports after generation: Checkbox
