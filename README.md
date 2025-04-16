@@ -63,6 +63,21 @@ BenchEverything automates C++ microbenchmarking tasks that developers typically 
 
 A core objective is also to help **demystify performance assumptions** that may no longer hold true on modern compilers and CPUs. By making it easy to test the same code across multiple configurations, BenchEverything helps reveal optimization behaviors that might be counter-intuitive or have changed over time.
 
+| Feature                     | Capability                                                                                             |
+| --------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| 📁 **Experiment Management**  | Organizes benchmarks into isolated, reproducible experiments.                              |
+| ⏱️ **Google Benchmark**       | Collects performance metrics (CPU/real time stats) and custom metrics via Google Benchmark.                    |
+| ⚙️ **Performance Counters**   | Collects hardware performance counters (cycles, instructions, cache misses, etc.) via `perf` (Linux).                  |
+| 💻 **Assembly Extraction**    | Extracts compiler-generated assembly for benchmarked functions.                                                        |
+| 🏷️ **Metadata Tracking**      | Collects detailed run environment (OS, CPU, compiler, flags, other metadata) for traceability.                                     |
+| 📄 **Template-Based Reports** | Generates Markdown reports from templates, embedding results, metadata, assembly, and plots.                           |
+| 🐍 **Custom Analysis Scripts**| Allows executing custom Python scripts for analysis and visualization during reporting.                         |
+| 🚀 **Build & Run Automation** | Automates building, running benchmarks across configurations (compilers, flags), and collecting results.               |
+| ✨ **Implementation Comparison**| Compares results between different code implementations.                                  |
+| 📊 **Comparison Reporting**   | Compares results across different settings (compilers, flags, platforms) for the same code.                            |
+| 🖱️ **UI Tool**                | Provides an optional GUI for managing experiments, running benchmarks, and generating reports.                         |
+
+
 ### 1.2. Core Philosophy
 
 *   **Experiment-centric:** Each benchmark lives in its own isolated directory under `experiments/`.
